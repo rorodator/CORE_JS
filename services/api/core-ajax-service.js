@@ -20,7 +20,14 @@ export class Core_AjaxService {
          },
          body: JSON.stringify(body)
       }).pipe(
-         map(response => response.response),
+         map(response => {
+            // Always return the response, let the caller decide how to handle it
+            return {
+               data: response.response,
+               status: response.status,
+               statusText: response.statusText
+            };
+         }),
          catchError(error => this.handleError(error))
       );
    }
@@ -39,7 +46,15 @@ export class Core_AjaxService {
          },
          body: JSON.stringify(body)
       }).pipe(
-         map(response => response.response),
+         map(response => {
+            // Always return the response, let the caller decide how to handle it
+            // This allows functional errors (like 409 for duplicate names) to be handled properly
+            return {
+               data: response.response,
+               status: response.status,
+               statusText: response.statusText
+            };
+         }),
          catchError(error => this.handleError(error))
       );
    }
@@ -58,7 +73,14 @@ export class Core_AjaxService {
             ...headers
          }
       }).pipe(
-         map(response => response.response),
+         map(response => {
+            // Always return the response, let the caller decide how to handle it
+            return {
+               data: response.response,
+               status: response.status,
+               statusText: response.statusText
+            };
+         }),
          catchError(error => this.handleError(error))
       );
    }
@@ -77,7 +99,14 @@ export class Core_AjaxService {
             ...headers
          }
       }).pipe(
-         map(response => response.response),
+         map(response => {
+            // Always return the response, let the caller decide how to handle it
+            return {
+               data: response.response,
+               status: response.status,
+               statusText: response.statusText
+            };
+         }),
          catchError(error => this.handleError(error))
       );
    }
@@ -98,19 +127,39 @@ export class Core_AjaxService {
          },
          body: JSON.stringify(body)
       }).pipe(
-         map(response => response.response),
+         map(response => {
+            // Always return the response, let the caller decide how to handle it
+            return {
+               data: response.response,
+               status: response.status,
+               statusText: response.statusText
+            };
+         }),
          catchError(error => this.handleError(error))
       );
    }
 
    /**
     * Handles errors for all AJAX requests.
-    * Override this method to customize error handling.
+    * Preserves HTTP status codes and response information.
     * @param {*} error The error object.
-    * @returns {Observable} An observable with the error.
+    * @returns {Observable} An observable with the enhanced error.
     */
    handleError(error) {
       console.log(error);
+      
+      // Preserve HTTP status information from XHR
+      if (error.xhr) {
+         const enhancedError = {
+            ...error,
+            status: error.xhr.status,
+            statusText: error.xhr.statusText,
+            response: error.xhr.response,
+            message: error.message || `HTTP ${error.xhr.status}: ${error.xhr.statusText}`
+         };
+         return of(enhancedError);
+      }
+      
       return of(error);
    }
 

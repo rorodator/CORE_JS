@@ -55,6 +55,7 @@ export class Core {
       this.registerService('cart', Core_CartService);
       this.registerService('browser', Core_BrowserService);
       this.registerService('zip', Core_ZipService);
+      this.registerService('lang', Core_LangService);
    }
 
    /**
