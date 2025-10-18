@@ -1,0 +1,14 @@
+.core-mobileOnly {
+   display: none;
+}
+
+@media only screen and (max-width:767px) {
+   .core-mobileOnly {
+      display: block;
+   }
+}
+
+.core-sticky {
+   position: -webkit-sticky;
+   position: sticky;
+}

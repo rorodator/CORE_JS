@@ -1,0 +1,11 @@
+{{#if nbPages}}
+<div class="ui pagination menu">
+   {{#each content}}
+   {{#compare this '===' 0}}
+   <a class="item disabled">...</a>
+   {{else}}
+   <a class="item {{#compare this '===' ../currentPage}}active{{/compare}}">{{this}}</a>
+   {{/compare}}
+   {{/each}}
+</div>
+{{/if}}

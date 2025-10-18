@@ -1,0 +1,7 @@
+{{#hasAttribute this 'zero-line'}}
+<div class="item" data-value="0">{{getAttribute this 'zero-line'}}</div>
+{{/hasAttribute}}
+{{#each optionList }}
+<div class="item" data-value="{{#hasProperty this 'value' }}{{this.value}}{{else}}{{this.label}}{{/hasProperty}}">{{{
+   this.label }}}</div>
+{{/each}}
