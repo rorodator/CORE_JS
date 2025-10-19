@@ -47,13 +47,15 @@ export class Core_AjaxService {
          body: JSON.stringify(body)
       }).pipe(
          map(response => {
-            // Always return the response, let the caller decide how to handle it
-            // This allows functional errors (like 409 for duplicate names) to be handled properly
-            return {
-               data: response.response,
-               status: response.status,
-               statusText: response.statusText
-            };
+            // Check HTTP status first - CORE handles technical errors
+            if (response.status >= 200 && response.status < 300) {
+               // HTTP success - return the API response directly
+               // The project will handle functional status codes (SUCCESS, TEAM_EXISTS, etc.)
+               return response.response;
+            } else {
+               // HTTP error - CORE handles technical errors
+               throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+            }
          }),
          catchError(error => this.handleError(error))
       );
@@ -148,18 +150,53 @@ export class Core_AjaxService {
    handleError(error) {
       console.log(error);
       
-      // Preserve HTTP status information from XHR
+      // CORE handles technical errors with English messages by default
+      // since CORE doesn't know what language system the project uses
+      let errorMessage = 'Network error occurred';
+      
       if (error.xhr) {
+         const status = error.xhr.status;
+         const statusText = error.xhr.statusText;
+         
+         // Generate English error messages for common HTTP errors
+         switch (status) {
+            case 400:
+               errorMessage = 'Bad Request: Invalid data sent to server';
+               break;
+            case 401:
+               errorMessage = 'Unauthorized: Please log in again';
+               break;
+            case 403:
+               errorMessage = 'Forbidden: You do not have permission to perform this action';
+               break;
+            case 404:
+               errorMessage = 'Not Found: The requested resource was not found';
+               break;
+            case 500:
+               errorMessage = 'Internal Server Error: Please try again later';
+               break;
+            case 503:
+               errorMessage = 'Service Unavailable: Server is temporarily unavailable';
+               break;
+            default:
+               errorMessage = `HTTP ${status}: ${statusText}`;
+         }
+         
+         // Show alert with English message (CORE doesn't know project's notification system)
+         alert(`CORE Error: ${errorMessage}`);
+         
          const enhancedError = {
             ...error,
-            status: error.xhr.status,
-            statusText: error.xhr.statusText,
+            status: status,
+            statusText: statusText,
             response: error.xhr.response,
-            message: error.message || `HTTP ${error.xhr.status}: ${error.xhr.statusText}`
+            message: errorMessage
          };
          return of(enhancedError);
       }
       
+      // Generic error
+      alert('CORE Error: Network connection failed');
       return of(error);
    }
 

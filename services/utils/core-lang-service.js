@@ -37,16 +37,30 @@ export class Core_LangService {
             targetAPI,
             { lang: this.#currentLang }
          ).subscribe(
-            (data) => {
-               this.#data = data;
+            (response) => {
+               // getJSON now returns the API response directly
+               // Check the functional status in response.status
+               if (response && response.status === 'SUCCESS') {
+                  this.#data = response.data.labels;
 
-               $svc('resource').unlock("api", targetAPI);
+                  $svc('resource').unlock("api", targetAPI);
 
-               // Update all registered objects with the new language
-               this.processLangSelected();
+                  // Update all registered objects with the new language
+                  this.processLangSelected();
 
-               // Notify all interested clients of the update
-               this.#notif.next(this.#data);
+                  // Notify all interested clients of the update
+                  this.#notif.next(this.#data);
+               } else if (response && response.status === 'LANG_ERROR') {
+                  // Handle language loading error
+                  $svc('resource').unlock("api", targetAPI);
+                  
+                  // Notify clients of the error
+                  this.#notif.next(null);
+               } else {
+                  // Handle HTTP errors or unexpected response format
+                  $svc('resource').unlock("api", targetAPI);
+                  this.#notif.next(null);
+               }
             }
          );
       }
@@ -150,5 +164,44 @@ export class Core_LangService {
     */
    get lang() {
       return this.#currentLang;
+   }
+
+   /**
+    * Gets a specific label by key (ponctual usage only).
+    * For components that need many labels, prefer direct access to the language repository.
+    * 
+    * Usage patterns:
+    * - ✅ Use for notifications: $svc('lang').getLabel('notifications.team_created')
+    * - ✅ Use for isolated error messages: $svc('lang').getLabel('errors.team_name_exists')
+    * - ❌ Avoid for multiple labels: prefer direct access to this.#data
+    * 
+    * @param {string} key - The label key (e.g., 'notifications.team_created')
+    * @param {Object} params - Optional parameters for interpolation
+    * @returns {string} The label value or the key if not found
+    */
+   getLabel(key, params = {}) {
+      if (!this.#data) {
+         return key; // Return key if data not loaded yet
+      }
+
+      const parts = key.split('.');
+      let value = this.#data;
+      
+      for (const part of parts) {
+         if (value && typeof value === 'object' && part in value) {
+            value = value[part];
+         } else {
+            return key; // Return key if not found
+         }
+      }
+
+      // Handle interpolation if params provided
+      if (typeof value === 'string' && Object.keys(params).length > 0) {
+         for (const [paramKey, paramValue] of Object.entries(params)) {
+            value = value.replace(new RegExp(`{${paramKey}}`, 'g'), paramValue);
+         }
+      }
+
+      return value;
    }
 }
