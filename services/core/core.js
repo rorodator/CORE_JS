@@ -10,6 +10,7 @@ import { Core_CartService } from "../data/core-cart-service";
 import { Core_RouterService } from "./core-router-service";
 import { Core_BrowserService } from "../ui/core-browser-service";
 import { Core_ZipService } from "../utils/core-zip-service";
+import { Core_ConfigService } from "./core-config-service.js";
 
 export class Core {
    /**
@@ -56,6 +57,7 @@ export class Core {
       this.registerService('browser', Core_BrowserService);
       this.registerService('zip', Core_ZipService);
       this.registerService('lang', Core_LangService);
+      this.registerService('config', Core_ConfigService);
    }
 
    /**

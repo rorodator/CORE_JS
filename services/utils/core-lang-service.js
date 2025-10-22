@@ -4,7 +4,6 @@ export class Core_LangService {
    #currentLang;        // Currently used language
    #data;               // All language mappings, organized by containers
    #notif;              // BehaviorSubject to notify clients of language data changes
-   #firstUpdate;        // Tracks if this is the first language update
    #defaultContainer;   // Default container for language labels
 
    /**
@@ -13,10 +12,8 @@ export class Core_LangService {
     */
    constructor(defaultLang = 'fr') {
       this.#data = null;
-      this.#firstUpdate = true;
       this.#currentLang = defaultLang;
       this.#notif = new BehaviorSubject(this.#data);
-      this.#firstUpdate = true;
       this.#defaultContainer = $svc('default').lang.globalContainer;
    }
 
@@ -38,6 +35,7 @@ export class Core_LangService {
             { lang: this.#currentLang }
          ).subscribe(
             (response) => {
+               console.log('response', response, response?.status);
                // getJSON now returns the API response directly
                // Check the functional status in response.status
                if (response && response.status === 'SUCCESS') {
@@ -75,7 +73,6 @@ export class Core_LangService {
    processLangSelected() {
       if (this.#data) {
          this.process();
-         this.#firstUpdate = false;
       }
    }
 

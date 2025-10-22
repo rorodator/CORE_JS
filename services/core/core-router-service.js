@@ -108,7 +108,6 @@ export class Core_RouterService {
    static manageLink(event) {
       const target = event.target.closest('a');
 
-      console.log('manageLink', target);
 
       if (target && target.hasAttribute('href')) {
 
