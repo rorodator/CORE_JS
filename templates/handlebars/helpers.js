@@ -132,3 +132,29 @@ Handlebars.registerHelper('countObjectProperties', function (obj) {
 Handlebars.registerHelper('getProperty', function (obj, propertyName) {
    return obj[propertyName];
 });
+
+/**
+ * Addition utilitaire.
+ * Usage : {{add a b}}
+ */
+Handlebars.registerHelper('add', function (a, b) {
+  return Number(a || 0) + Number(b || 0);
+});
+
+/**
+ * Longueur d'un tableau (0 si non tableau).
+ * Usage : {{length arr}}
+ */
+Handlebars.registerHelper('length', function (arr) {
+  return Array.isArray(arr) ? arr.length : 0;
+});
+
+/**
+ * Boolean comparison helpers usable in subexpressions
+ */
+Handlebars.registerHelper('eq', function (a, b) { return a == b; });
+Handlebars.registerHelper('ne', function (a, b) { return a != b; });
+Handlebars.registerHelper('gt', function (a, b) { return Number(a) > Number(b); });
+Handlebars.registerHelper('gte', function (a, b) { return Number(a) >= Number(b); });
+Handlebars.registerHelper('lt', function (a, b) { return Number(a) < Number(b); });
+Handlebars.registerHelper('lte', function (a, b) { return Number(a) <= Number(b); });

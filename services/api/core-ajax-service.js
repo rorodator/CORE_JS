@@ -21,12 +21,11 @@ export class Core_AjaxService {
          body: JSON.stringify(body)
       }).pipe(
          map(response => {
-            // Always return the response, let the caller decide how to handle it
-            return {
-               data: response.response,
-               status: response.status,
-               statusText: response.statusText
-            };
+            if (response.status >= 200 && response.status < 300) {
+               return response.response;
+            } else {
+               throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+            }
          }),
          catchError(error => this.handleError(error))
       );
@@ -76,12 +75,11 @@ export class Core_AjaxService {
          }
       }).pipe(
          map(response => {
-            // Always return the response, let the caller decide how to handle it
-            return {
-               data: response.response,
-               status: response.status,
-               statusText: response.statusText
-            };
+            if (response.status >= 200 && response.status < 300) {
+               return response.response;
+            } else {
+               throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+            }
          }),
          catchError(error => this.handleError(error))
       );
@@ -102,12 +100,11 @@ export class Core_AjaxService {
          }
       }).pipe(
          map(response => {
-            // Always return the response, let the caller decide how to handle it
-            return {
-               data: response.response,
-               status: response.status,
-               statusText: response.statusText
-            };
+            if (response.status >= 200 && response.status < 300) {
+               return response.response;
+            } else {
+               throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+            }
          }),
          catchError(error => this.handleError(error))
       );
@@ -130,12 +127,11 @@ export class Core_AjaxService {
          body: JSON.stringify(body)
       }).pipe(
          map(response => {
-            // Always return the response, let the caller decide how to handle it
-            return {
-               data: response.response,
-               status: response.status,
-               statusText: response.statusText
-            };
+            if (response.status >= 200 && response.status < 300) {
+               return response.response;
+            } else {
+               throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+            }
          }),
          catchError(error => this.handleError(error))
       );
@@ -148,7 +144,7 @@ export class Core_AjaxService {
     * @returns {Observable} An observable with the enhanced error.
     */
    handleError(error) {
-      console.log(error);
+      
       
       // CORE handles technical errors with English messages by default
       // since CORE doesn't know what language system the project uses
