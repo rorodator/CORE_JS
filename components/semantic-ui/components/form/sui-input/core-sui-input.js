@@ -21,6 +21,34 @@ export class Core_SUIInput extends Core_HBSElement {
       if (this.name) this.inputEl.name = this.name;
       if (this.placeholder) this.inputEl.setAttribute('placeholder', this.placeholder);
 
+      // Propagate data-core-lang to underlying input so Core_LangService can process attributes directly
+      const dataCoreLang = this.getAttribute('data-core-lang');
+      if (dataCoreLang) {
+         this.inputEl.setAttribute('data-core-lang', dataCoreLang);
+      }
+
+      // Mirror selected attributes from host to inner input (supports runtime i18n updates)
+      const mirrorAttr = (attrName) => {
+         const val = this.getAttribute(attrName);
+         if (val !== null) this.inputEl.setAttribute(attrName, val);
+         else this.inputEl.removeAttribute(attrName);
+      };
+      // Initial mirror for common attributes
+      ['placeholder', 'title', 'aria-label'].forEach(mirrorAttr);
+      // Observe host attribute changes and forward to input
+      const observer = new MutationObserver((mutations) => {
+         mutations.forEach(m => {
+            if (m.type === 'attributes' && m.attributeName) {
+               if (m.attributeName === 'placeholder' || m.attributeName === 'title' || m.attributeName.startsWith('aria-')) {
+                  mirrorAttr(m.attributeName);
+               }
+            }
+         });
+      });
+      observer.observe(this, { attributes: true, attributeFilter: ['placeholder', 'title'] });
+      // Wide observe for aria-* (MutationObserver doesn't support wildcards; observe all and filter)
+      observer.observe(this, { attributes: true });
+
       if (!this.clearable) {
          if (this.clearIcon) this.clearIcon.style.display = 'none';
          return;
