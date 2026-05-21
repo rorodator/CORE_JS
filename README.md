@@ -14,7 +14,7 @@ CORE_JS fournit toutes les ressources génériques et réutilisables pour la par
 - **Routing** : Système de routage pour les SPA
 - **Gestion des données** : Repositories, sources de données, filtres
 - **Interface utilisateur** : Composants Semantic UI, notifications
-- **Utilitaires** : Services de langue, compression, utilitaires généraux
+- **Utilitaires** : Services de langue, compression, DOM, utilitaires généraux
 
 ## Installation
 
@@ -26,19 +26,18 @@ Cette bibliothèque est incluse dans les projets via des liens symboliques.
 // Accès aux services
 const logService = $svc('log');
 const langService = $svc('lang');
+const dom = $svc('dom');
 
-// Création d'un composant personnalisé
-export class MonComposant extends Core_HTMLElement {
-    onConnect() {
-        // Logique d'initialisation
-    }
-}
+// DOM helpers (also importable as ES module)
+import { createElement, mountHtml, hasBoolAttr } from 'CORE_JS/lib/utils/dom.js';
+
+dom.createElement('button', { text: 'Save', attrs: { type: 'button' } });
 ```
 
 ## Structure
 
-- `lib/` : Classes de base et utilitaires
-- `services/` : Services métier et techniques
+- `lib/` : Classes de base et utilitaires (`lib/utils/dom.js` — `createElement`, `mountHtml`, attributs booléens/JSON)
+- `services/` : Services métier et techniques (`dom`, `log`, `lang`, …)
 - `components/` : Composants UI réutilisables
 - `templates/` : Templates Handlebars
 - `styles/` : Styles CSS
