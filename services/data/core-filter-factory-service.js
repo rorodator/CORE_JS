@@ -1,5 +1,5 @@
-import { Core_IntFilter } from "../../lib/data/filters/core-int-filter";   
-import { Core_StringFilter } from "../../lib/data/filters/core-string-filter";
+import { Core_IntFilter } from "../../lib/data/filters/core-int-filter.js";
+import { Core_StringFilter } from "../../lib/data/filters/core-string-filter.js";
 
 export class Core_FilterFactoryService {
    #factory;   // Map of filter type names to their constructors

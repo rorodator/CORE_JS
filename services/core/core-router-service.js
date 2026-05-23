@@ -1,4 +1,4 @@
-import { Core_HTMLElement } from "../../lib/base/core-html-element";
+import { Core_HTMLElement } from "../../lib/base/core-html-element.js";
 
 export class Core_RouterService {
    static router = null;    // The one instance for the one Router that can be instantiated

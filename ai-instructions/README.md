@@ -26,6 +26,15 @@ CORE_JS    →  imports neither CORE_UX nor any app
 
 Never add an import from CORE_UX or an application repo into CORE_JS.
 
-## Full placement guide
+## ESM imports (mandatory)
+
+All **relative** imports between CORE_JS modules must include the **`.js` extension**:
+
+```javascript
+import { Core_HTMLElement } from './core-html-element.js';
+import { Core_SubscriptionManager } from '../utils/core-subscription-manager.js';
+```
+
+Webpack 5 and native ESM require explicit extensions. Do not rely on `fullySpecified: false` in consuming apps.
 
 See **MyJourney** `ai-instructions/layering.md` for the complete decision checklist and anti-patterns (same rules apply to all CORE repos).

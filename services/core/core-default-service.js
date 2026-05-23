@@ -1,4 +1,4 @@
-import { Core_LogService } from "./core-log-service";
+import { Core_LogService } from "./core-log-service.js";
 
 export class Core_DefaultService {
    constructor() {

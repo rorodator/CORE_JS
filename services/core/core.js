@@ -1,16 +1,16 @@
-import { Core_AjaxService } from "../api/core-ajax-service";
-import { Core_ResourceService } from "../ui/core-resource-service";
-import { Core_SemanticService } from "../ui/core-semantic-service";
-import { Core_LogService } from "./core-log-service";
-import { Core_DefaultService } from "./core-default-service";
-import { Core_FilterFactoryService } from "../data/core-filter-factory-service";
-import { Core_UtilService } from "../utils/core-util-service";
-import { Core_LangService } from "../utils/core-lang-service";
-import { Core_CartService } from "../data/core-cart-service";
-import { Core_RouterService } from "./core-router-service";
-import { Core_BrowserService } from "../ui/core-browser-service";
-import { Core_ZipService } from "../utils/core-zip-service";
-import { Core_DomService } from "../utils/core-dom-service";
+import { Core_AjaxService } from "../api/core-ajax-service.js";
+import { Core_ResourceService } from "../ui/core-resource-service.js";
+import { Core_SemanticService } from "../ui/core-semantic-service.js";
+import { Core_LogService } from "./core-log-service.js";
+import { Core_DefaultService } from "./core-default-service.js";
+import { Core_FilterFactoryService } from "../data/core-filter-factory-service.js";
+import { Core_UtilService } from "../utils/core-util-service.js";
+import { Core_LangService } from "../utils/core-lang-service.js";
+import { Core_CartService } from "../data/core-cart-service.js";
+import { Core_RouterService } from "./core-router-service.js";
+import { Core_BrowserService } from "../ui/core-browser-service.js";
+import { Core_ZipService } from "../utils/core-zip-service.js";
+import { Core_DomService } from "../utils/core-dom-service.js";
 import { Core_ConfigService } from "./core-config-service.js";
 
 export class Core {
