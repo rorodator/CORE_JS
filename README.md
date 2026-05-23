@@ -29,14 +29,15 @@ const langService = $svc('lang');
 const dom = $svc('dom');
 
 // DOM helpers (also importable as ES module)
-import { createElement, mountHtml, hasBoolAttr } from 'CORE_JS/lib/utils/dom.js';
+import { createElement, mountTrustedHtml, hasBoolAttr } from 'CORE_JS/lib/utils/dom.js';
 
 dom.createElement('button', { text: 'Save', attrs: { type: 'button' } });
+// mountTrustedHtml / options.trustedHtml: author-controlled markup only — never user input
 ```
 
 ## Structure
 
-- `lib/` : Classes de base et utilitaires (`lib/utils/dom.js` — `createElement`, `mountHtml`, attributs booléens/JSON)
+- `lib/` : Classes de base et utilitaires (`lib/utils/dom.js` — `createElement`, `mountTrustedHtml`, attributs booléens/JSON)
 - `services/` : Services métier et techniques (`dom`, `log`, `lang`, …)
 - `components/` : Composants UI réutilisables
 - `templates/` : Templates Handlebars

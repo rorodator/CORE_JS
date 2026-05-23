@@ -2,13 +2,14 @@ import {
     createElement,
     hasBoolAttr,
     mirrorAttributes,
-    mountHtml,
+    mountTrustedHtml,
     parseJsonAttr,
     registerCustomElement
 } from '../../lib/utils/dom.js';
 
 /**
  * DOM utilities exposed as a Core service ($svc('dom')).
+ * See lib/utils/dom.js for trusted-HTML vs plain-text conventions.
  */
 export class Core_DomService {
 
@@ -16,8 +17,8 @@ export class Core_DomService {
         return createElement(tag, options);
     }
 
-    mountHtml(parent, html) {
-        mountHtml(parent, html);
+    mountTrustedHtml(parent, trustedHtml) {
+        mountTrustedHtml(parent, trustedHtml);
     }
 
     hasBoolAttr(el, name) {

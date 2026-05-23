@@ -37,4 +37,33 @@ import { Core_SubscriptionManager } from '../utils/core-subscription-manager.js'
 
 Webpack 5 and native ESM require explicit extensions. Do not rely on `fullySpecified: false` in consuming apps.
 
+**Delivery:** apps consume CORE_JS **via webpack bundles** (primary). Explicit `.js` extensions keep the tree **native-ESM-ready** for import maps / doc shims (e.g. CORE_UX static docs). No bare relative paths — audit complete across the repo.
+
+## DOM / HTML injection
+
+- `createElement({ text })` and `textContent` for user or API strings.
+- `trustedHtml` / `mountTrustedHtml` for author-controlled markup only (templates, static fragments).
+- i18n via `data-core-lang` uses `textContent` by default; set `"rich": true` in the JSON only when the label is intentional HTML from translation files.
+
+## Ajax (`Core_AjaxService`)
+
+- **2xx HTTP**: observable emits the response body (`next`). Functional statuses (`SUCCESS`, `LANG_ERROR`, …) stay in the payload — handle in app code.
+- **Transport / HTTP failure**: observable **errors** with `{ kind: 'transport', status, statusText, message, response }`. No `alert()` in CORE.
+- App UX: override `getDefaultHeaders()` / `onTransportError()`, or listen for `core-ajax-transport-error` on `document`.
+- Override `getDefaultHeaders(method)` in the app Ajax service for `X-CSRF-Token`, client version, request id, etc.
+
+## Router link interception
+
+`Core_RouterService.manageLink` intercepts plain left-clicks on same-app relative links only. It **does not** intercept:
+
+- modifier-clicks (Ctrl/Cmd/Shift/Alt), non-primary button, or `defaultPrevented`
+- `target="_blank"` / `_new`, `download`, `data-core-ignore-router`
+- in-page `#` anchors, `mailto:`, `tel:`, other special protocols, `//`, `http(s)://`
+
+## Config base URL (`Core_ConfigService`)
+
+- `setBaseUrl()` always stores a normalized path via `Core_ConfigService.normalizeBaseUrl()`.
+- Root: `''`, `'/'` → `'/'`. Subpath: `'MyJourney'`, `'/MyJourney/'` → `'/MyJourney'` (no trailing slash).
+- `getRelativePath()` / `getRoute()` strip the base with segment-safe matching (avoids `/MyJourney` vs `/MyJourneyExtra` bugs).
+
 See **MyJourney** `ai-instructions/layering.md` for the complete decision checklist and anti-patterns (same rules apply to all CORE repos).

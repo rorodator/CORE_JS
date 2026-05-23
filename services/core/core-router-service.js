@@ -102,37 +102,94 @@ export class Core_RouterService {
 
    /**
     * Manage clicks on a link when a Router is active.
-    * Ignores links with 'core-ignore' in the href.
+    * Bypasses modifier clicks, external/special URLs, and links marked with data-core-ignore-router.
     * @param {Event} event The click event.
     */
    static manageLink(event) {
-      const target = event.target.closest('a');
+      const anchor = event.target.closest('a');
 
+      if (!anchor || !anchor.hasAttribute('href')) {
+         return;
+      }
 
-      if (target && target.hasAttribute('href')) {
+      const href = anchor.getAttribute('href');
+      if (!href) {
+         return;
+      }
 
-         let href = target.getAttribute('href');
+      if (Core_RouterService.#shouldBypassRouter(event, anchor, href)) {
+         return;
+      }
 
-         // href must be set on the a element
-         if (href) {
+      event.preventDefault();
+      Core_RouterService.pushState(href);
+   }
 
-            // http will always allow the link to work
-            if (href.substring(0, 4).toLowerCase() === 'http') {
-               window.location = href;
-            }
-            // Local link
-            else {
-               // Avoid the click to be handled by the browser default behavior
-               event.preventDefault();
+   /**
+    * @param {Event} event
+    * @param {HTMLAnchorElement} anchor
+    * @param {string} href
+    * @returns {boolean}
+    */
+   static #shouldBypassRouter(event, anchor, href) {
+      if (event.defaultPrevented) {
+         return true;
+      }
 
-               // core-ignore is THE url to use for this Router not to handle the click
-               if (!href.includes('core-ignore')) {
-                  // Then process the page change
-                  Core_RouterService.pushState(href);
-               }
-            }
+      if (event.button !== 0) {
+         return true;
+      }
+
+      if (event.ctrlKey || event.metaKey || event.shiftKey || event.altKey) {
+         return true;
+      }
+
+      if (anchor.hasAttribute('data-core-ignore-router')) {
+         return true;
+      }
+
+      if (anchor.hasAttribute('download')) {
+         return true;
+      }
+
+      const target = (anchor.getAttribute('target') || '').toLowerCase();
+      if (target === '_blank' || target === '_new') {
+         return true;
+      }
+
+      return Core_RouterService.#isExternalOrSpecialHref(href);
+   }
+
+   /**
+    * @param {string} href
+    * @returns {boolean}
+    */
+   static #isExternalOrSpecialHref(href) {
+      const trimmed = href.trim();
+      if (!trimmed) {
+         return true;
+      }
+
+      if (trimmed.startsWith('#')) {
+         return true;
+      }
+
+      const lower = trimmed.toLowerCase();
+      const specialProtocols = [
+         'mailto:', 'tel:', 'sms:', 'fax:', 'javascript:', 'data:', 'blob:', 'file:', 'ftp:'
+      ];
+
+      for (const protocol of specialProtocols) {
+         if (lower.startsWith(protocol)) {
+            return true;
          }
       }
+
+      if (lower.startsWith('//')) {
+         return true;
+      }
+
+      return lower.startsWith('http://') || lower.startsWith('https://');
    }
 
    /**

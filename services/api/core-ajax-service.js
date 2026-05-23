@@ -1,63 +1,50 @@
 import { ajax } from 'rxjs/ajax';
-import { map, catchError, of } from 'rxjs';
+import { map, catchError, throwError } from 'rxjs';
 
+/**
+ * Platform AJAX wrapper around RxJS ajax.
+ *
+ * Convention:
+ * - Successful HTTP (2xx): observable emits the parsed response body (including functional statuses).
+ * - Transport / HTTP failures: observable errors with a normalized {@link Core_AjaxTransportError}.
+ *   Apps handle UX via {@link onTransportError}, `core-ajax-transport-error`, or subscriber `error`.
+ */
 export class Core_AjaxService {
 
+   static TRANSPORT_ERROR_EVENT = 'core-ajax-transport-error';
+
    constructor() {
+   }
+
+   /**
+    * Default request headers. Override in the app Ajax service (CSRF token, client version, request id, …).
+    * @param {string} method HTTP method.
+    * @returns {Record<string, string>}
+    */
+   getDefaultHeaders(method) {
+      return {
+         'X-Requested-With': 'XMLHttpRequest',
+      };
    }
 
    /**
     * Sends a PUT request with a JSON body.
     * @param {string} url The endpoint URL.
     * @param {*} body The request payload.
+    * @param {Record<string, string>} [headers={}] Optional extra headers.
     */
-   put(url, body) {
-      return ajax({
-         url: this.mapURL(url),
-         method: 'PUT',
-         headers: {
-            'Content-Type': 'application/json',
-         },
-         body: JSON.stringify(body)
-      }).pipe(
-         map(response => {
-            if (response.status >= 200 && response.status < 300) {
-               return response.response;
-            } else {
-               throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-            }
-         }),
-         catchError(error => this.handleError(error))
-      );
+   put(url, body, headers = {}) {
+      return this.#jsonRequest('PUT', url, body, headers);
    }
 
    /**
     * Sends a POST request with a JSON body and returns the parsed response.
     * @param {string} url The endpoint URL.
     * @param {*} body The request payload.
+    * @param {Record<string, string>} [headers={}] Optional extra headers.
     */
-   getJSON(url, body) {
-      return ajax({
-         url: this.mapURL(url),
-         method: 'POST',
-         headers: {
-            'Content-Type': 'application/json',
-         },
-         body: JSON.stringify(body)
-      }).pipe(
-         map(response => {
-            // Check HTTP status first - CORE handles technical errors
-            if (response.status >= 200 && response.status < 300) {
-               // HTTP success - return the API response directly
-               // The project will handle functional status codes (SUCCESS, TEAM_EXISTS, etc.)
-               return response.response;
-            } else {
-               // HTTP error - CORE handles technical errors
-               throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-            }
-         }),
-         catchError(error => this.handleError(error))
-      );
+   getJSON(url, body, headers = {}) {
+      return this.#jsonRequest('POST', url, body, headers);
    }
 
    /**
@@ -66,23 +53,7 @@ export class Core_AjaxService {
     * @param {Object} [headers={}] Optional headers.
     */
    get(url, headers = {}) {
-      return ajax({
-         url: this.mapURL(url),
-         method: 'GET',
-         headers: {
-            'Content-Type': 'application/json',
-            ...headers
-         }
-      }).pipe(
-         map(response => {
-            if (response.status >= 200 && response.status < 300) {
-               return response.response;
-            } else {
-               throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-            }
-         }),
-         catchError(error => this.handleError(error))
-      );
+      return this.#jsonRequest('GET', url, undefined, headers);
    }
 
    /**
@@ -91,23 +62,7 @@ export class Core_AjaxService {
     * @param {Object} [headers={}] Optional headers.
     */
    delete(url, headers = {}) {
-      return ajax({
-         url: this.mapURL(url),
-         method: 'DELETE',
-         headers: {
-            'Content-Type': 'application/json',
-            ...headers
-         }
-      }).pipe(
-         map(response => {
-            if (response.status >= 200 && response.status < 300) {
-               return response.response;
-            } else {
-               throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-            }
-         }),
-         catchError(error => this.handleError(error))
-      );
+      return this.#jsonRequest('DELETE', url, undefined, headers);
    }
 
    /**
@@ -117,83 +72,28 @@ export class Core_AjaxService {
     * @param {Object} [headers={}] Optional headers.
     */
    patch(url, body, headers = {}) {
-      return ajax({
-         url: this.mapURL(url),
-         method: 'PATCH',
-         headers: {
-            'Content-Type': 'application/json',
-            ...headers
-         },
-         body: JSON.stringify(body)
-      }).pipe(
-         map(response => {
-            if (response.status >= 200 && response.status < 300) {
-               return response.response;
-            } else {
-               throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-            }
-         }),
-         catchError(error => this.handleError(error))
-      );
+      return this.#jsonRequest('PATCH', url, body, headers);
    }
 
    /**
-    * Handles errors for all AJAX requests.
-    * Preserves HTTP status codes and response information.
-    * @param {*} error The error object.
-    * @returns {Observable} An observable with the enhanced error.
+    * Hook for app-level UX (toast, modal, redirect). Default: log + DOM event only.
+    * @param {Core_AjaxTransportError} error Normalized transport error.
+    */
+   onTransportError(error) {
+   }
+
+   /**
+    * Normalizes and propagates transport errors as RxJS errors.
+    * @param {*} error Raw error from RxJS ajax or {@link #mapSuccessfulResponse}.
+    * @returns {import('rxjs').Observable<never>}
     */
    handleError(error) {
-      
-      
-      // CORE handles technical errors with English messages by default
-      // since CORE doesn't know what language system the project uses
-      let errorMessage = 'Network error occurred';
-      
-      if (error.xhr) {
-         const status = error.xhr.status;
-         const statusText = error.xhr.statusText;
-         
-         // Generate English error messages for common HTTP errors
-         switch (status) {
-            case 400:
-               errorMessage = 'Bad Request: Invalid data sent to server';
-               break;
-            case 401:
-               errorMessage = 'Unauthorized: Please log in again';
-               break;
-            case 403:
-               errorMessage = 'Forbidden: You do not have permission to perform this action';
-               break;
-            case 404:
-               errorMessage = 'Not Found: The requested resource was not found';
-               break;
-            case 500:
-               errorMessage = 'Internal Server Error: Please try again later';
-               break;
-            case 503:
-               errorMessage = 'Service Unavailable: Server is temporarily unavailable';
-               break;
-            default:
-               errorMessage = `HTTP ${status}: ${statusText}`;
-         }
-         
-         // Show alert with English message (CORE doesn't know project's notification system)
-         alert(`CORE Error: ${errorMessage}`);
-         
-         const enhancedError = {
-            ...error,
-            status: status,
-            statusText: statusText,
-            response: error.xhr.response,
-            message: errorMessage
-         };
-         return of(enhancedError);
-      }
-      
-      // Generic error
-      alert('CORE Error: Network connection failed');
-      return of(error);
+      const normalized = error?.kind === 'transport'
+         ? error
+         : this.#normalizeTransportError(error);
+
+      this.#emitTransportError(normalized);
+      return throwError(() => normalized);
    }
 
    /**
@@ -205,4 +105,146 @@ export class Core_AjaxService {
    mapURL(url) {
       return url;
    }
+
+   /**
+    * @param {string} method
+    * @param {string} url
+    * @param {*} [body]
+    * @param {Record<string, string>} [extraHeaders]
+    */
+   #jsonRequest(method, url, body, extraHeaders = {}) {
+      const config = {
+         url: this.mapURL(url),
+         method,
+         headers: {
+            ...this.getDefaultHeaders(method),
+            'Content-Type': 'application/json',
+            ...extraHeaders,
+         },
+      };
+
+      if (body !== undefined) {
+         config.body = JSON.stringify(body);
+      }
+
+      return ajax(config).pipe(
+         map((response) => this.#mapSuccessfulResponse(response)),
+         catchError((error) => this.handleError(error))
+      );
+   }
+
+   /**
+    * @param {import('rxjs/ajax').AjaxResponse} response
+    * @returns {*}
+    */
+   #mapSuccessfulResponse(response) {
+      if (response.status >= 200 && response.status < 300) {
+         return response.response;
+      }
+
+      throw {
+         kind: 'transport',
+         status: response.status,
+         statusText: response.statusText,
+         message: this.#httpStatusMessage(response.status, response.statusText),
+         response: response.response,
+      };
+   }
+
+   /**
+    * @param {*} error
+    * @returns {Core_AjaxTransportError}
+    */
+   #normalizeTransportError(error) {
+      if (error?.xhr) {
+         const status = error.xhr.status;
+         const statusText = error.xhr.statusText;
+
+         return {
+            kind: 'transport',
+            status,
+            statusText,
+            message: this.#httpStatusMessage(status, statusText),
+            response: this.#parseXhrResponse(error.xhr),
+         };
+      }
+
+      return {
+         kind: 'transport',
+         status: 0,
+         statusText: '',
+         message: error?.message || 'Network connection failed',
+         response: null,
+      };
+   }
+
+   /**
+    * @param {number} status
+    * @param {string} statusText
+    * @returns {string}
+    */
+   #httpStatusMessage(status, statusText) {
+      switch (status) {
+         case 400:
+            return 'Bad Request: Invalid data sent to server';
+         case 401:
+            return 'Unauthorized: Please log in again';
+         case 403:
+            return 'Forbidden: You do not have permission to perform this action';
+         case 404:
+            return 'Not Found: The requested resource was not found';
+         case 500:
+            return 'Internal Server Error: Please try again later';
+         case 503:
+            return 'Service Unavailable: Server is temporarily unavailable';
+         default:
+            return status ? `HTTP ${status}: ${statusText}` : 'Network connection failed';
+      }
+   }
+
+   /**
+    * @param {XMLHttpRequest} xhr
+    * @returns {*}
+    */
+   #parseXhrResponse(xhr) {
+      const raw = xhr.response;
+      if (raw == null || raw === '') {
+         return null;
+      }
+      if (typeof raw === 'object') {
+         return raw;
+      }
+      try {
+         return JSON.parse(raw);
+      } catch (_) {
+         return raw;
+      }
+   }
+
+   /**
+    * @param {Core_AjaxTransportError} error
+    */
+   #emitTransportError(error) {
+      try {
+         $svc('log').error('Ajax transport error', error);
+      } catch (_) {}
+
+      try {
+         document.dispatchEvent(new CustomEvent(
+            Core_AjaxService.TRANSPORT_ERROR_EVENT,
+            { detail: error }
+         ));
+      } catch (_) {}
+
+      this.onTransportError(error);
+   }
 }
+
+/**
+ * @typedef {Object} Core_AjaxTransportError
+ * @property {'transport'} kind
+ * @property {number} status HTTP status (0 when unavailable).
+ * @property {string} statusText
+ * @property {string} message English transport message for logging/fallback UI.
+ * @property {*} response Parsed response body when available.
+ */

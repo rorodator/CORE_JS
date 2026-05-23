@@ -33,34 +33,28 @@ export class Core_LangService {
          $svc('ajax').getJSON(
             targetAPI,
             { lang: this.#currentLang }
-         ).subscribe(
-            (response) => {
-               console.log('response', response, response?.status);
-               // getJSON now returns the API response directly
-               // Check the functional status in response.status
+         ).subscribe({
+            next: (response) => {
                if (response && response.status === 'SUCCESS') {
                   this.#data = response.data.labels;
 
                   $svc('resource').unlock("api", targetAPI);
 
-                  // Update all registered objects with the new language
                   this.processLangSelected();
-
-                  // Notify all interested clients of the update
                   this.#notif.next(this.#data);
                } else if (response && response.status === 'LANG_ERROR') {
-                  // Handle language loading error
                   $svc('resource').unlock("api", targetAPI);
-                  
-                  // Notify clients of the error
                   this.#notif.next(null);
                } else {
-                  // Handle HTTP errors or unexpected response format
                   $svc('resource').unlock("api", targetAPI);
                   this.#notif.next(null);
                }
+            },
+            error: () => {
+               $svc('resource').unlock("api", targetAPI);
+               this.#notif.next(null);
             }
-         );
+         });
       }
 
       return this.#notif;
@@ -81,33 +75,73 @@ export class Core_LangService {
     * @param {HTMLElement|null} obj The root element to process (defaults to document.body).
     */
    process(obj = null) {
-      if (this.#data) {
-         if (obj === null) {
-            obj = document.body;
-         }
-
-         let targetElements = obj.querySelectorAll('[data-core-lang]');
-
-         // For all elements asking for a lang processing
-         targetElements.forEach((elt) => {
-            let info = JSON.parse(elt.getAttribute('data-core-lang'));
-
-            if (Array.isArray(info)) {
-               info.forEach((val) => {
-                  this.processOneElement(elt, val);
-               });
-            }
-            else {
-               this.processOneElement(elt, info);
-            }
-         });
+      if (!this.#data) {
+         return;
       }
+
+      if (obj === null) {
+         obj = document.body;
+      }
+
+      obj.querySelectorAll('[data-core-lang]').forEach((elt) => {
+         this.#parseLangEntries(elt).forEach((info) => {
+            this.processOneElement(elt, info);
+         });
+      });
+   }
+
+   /**
+    * Parses and validates data-core-lang attribute entries.
+    * @param {HTMLElement} elt
+    * @returns {Object[]}
+    */
+   #parseLangEntries(elt) {
+      const raw = elt.getAttribute('data-core-lang');
+      if (!raw) {
+         return [];
+      }
+
+      let parsed;
+      try {
+         parsed = JSON.parse(raw);
+      } catch (e) {
+         try {
+            $svc('log').error('Invalid data-core-lang JSON', { element: elt, error: e });
+         } catch (_) {}
+         return [];
+      }
+
+      const entries = Array.isArray(parsed) ? parsed : [parsed];
+      return entries.filter((info) => this.#isValidLangEntry(info, elt));
+   }
+
+   /**
+    * @param {unknown} info
+    * @param {HTMLElement} elt
+    * @returns {boolean}
+    */
+   #isValidLangEntry(info, elt) {
+      if (!info || typeof info !== 'object') {
+         try {
+            $svc('log').error('Invalid data-core-lang entry (expected object)', { element: elt, info });
+         } catch (_) {}
+         return false;
+      }
+
+      if (!info.container || !info.name) {
+         try {
+            $svc('log').error('Invalid data-core-lang entry (missing container or name)', { element: elt, info });
+         } catch (_) {}
+         return false;
+      }
+
+      return true;
    }
 
    /**
     * Updates a single element with the appropriate language label.
     * @param {HTMLElement} elt The element to update.
-    * @param {Object} info The language info (container, name, attribute).
+    * @param {Object} info The language info (container, name, attribute, rich).
     */
    processOneElement(elt, info) {
       let theValue = undefined;
@@ -116,24 +150,23 @@ export class Core_LangService {
          && (this.#data[info.container][info.name])) {
          theValue = this.#data[info.container][info.name];
       }
-      else {
-         if ((this.#data[this.#defaultContainer])
-            && (this.#data[this.#defaultContainer][info.name])) {
-            theValue = this.#data[this.#defaultContainer][info.name];
-         }
+      else if ((this.#data[this.#defaultContainer])
+         && (this.#data[this.#defaultContainer][info.name])) {
+         theValue = this.#data[this.#defaultContainer][info.name];
       }
 
       if (!theValue) {
-         theValue = '<b>Label not found</b>';
+         theValue = 'Label not found';
          $svc('log').error('Lang label [' + info.name + '] not found in [' + info.container + ']');
       }
-      else {
-         // Update an attribute if required, or innerHTML otherwise 
-         if (info.attribute) {
-            elt.setAttribute(info.attribute, theValue);
-         } else {
-            elt.innerHTML = theValue;
-         }
+
+      if (info.attribute) {
+         elt.setAttribute(info.attribute, theValue);
+      } else if (info.rich === true) {
+         // Opt-in only: author-controlled markup in translation files — never user input.
+         elt.innerHTML = theValue;
+      } else {
+         elt.textContent = theValue;
       }
    }
 

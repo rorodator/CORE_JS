@@ -3,7 +3,7 @@
  * Provides basic configuration functionality for routing and other core features
  */
 export class Core_ConfigService {
-    
+
     /**
      * Configuration object
      * @private
@@ -13,50 +13,58 @@ export class Core_ConfigService {
         routes: {},
         environment: 'development'
     };
-    
+
     constructor() {
-        // Call environment detection - can be overridden by child classes
         this.detectEnvironment();
     }
 
     /**
-     * Get the base URL for the application
-     * @returns {string} The base URL
+     * Normalizes an application base path for routing and API URL building.
+     * Root deployments → '/'. Subpaths → '/Segment' with no trailing slash.
+     *
+     * @param {string|null|undefined} raw
+     * @returns {string}
+     */
+    static normalizeBaseUrl(raw) {
+        if (raw == null) {
+            return '/';
+        }
+
+        let value = String(raw).trim();
+        if (value === '' || value === '/') {
+            return '/';
+        }
+
+        value = value.replace(/\/+$/, '');
+        if (!value.startsWith('/')) {
+            value = '/' + value;
+        }
+
+        return value;
+    }
+
+    /**
+     * @returns {string} Normalized base path ('/' at document root, else '/AppName').
      */
     getBaseUrl() {
         return this.#config.baseUrl;
     }
 
     /**
-     * Set the base URL for the application
-     * @param {string} baseUrl - The base URL to set
+     * @param {string|null|undefined} baseUrl
      */
     setBaseUrl(baseUrl) {
-        this.#config.baseUrl = baseUrl;
+        this.#config.baseUrl = Core_ConfigService.normalizeBaseUrl(baseUrl);
     }
 
     /**
      * Extract relative path from full pathname
-     * Removes the baseUrl from the pathname to get the relative path
-     * @param {string} pathname - Full pathname (e.g., '/MyManager/team/search-test')
-     * @returns {string} Relative path (e.g., '/team/search-test')
+     * @param {string} [pathname]
+     * @returns {string}
      */
     getRelativePath(pathname = null) {
         const fullPath = pathname || window.location.pathname;
-        const baseUrl = this.#config.baseUrl;
-        
-        // If baseUrl is not yet initialized or is '/', return the path as is
-        if (!baseUrl || baseUrl === '/') {
-            return fullPath;
-        }
-        
-        // Remove baseUrl from the beginning of the path
-        if (fullPath.startsWith(baseUrl)) {
-            return fullPath.substring(baseUrl.length) || '/';
-        }
-        
-        // If baseUrl doesn't match, return the original path
-        return fullPath;
+        return Core_ConfigService.#stripBasePrefix(fullPath, this.#config.baseUrl);
     }
 
     /**
@@ -85,15 +93,8 @@ export class Core_ConfigService {
         if (!fullRoute) {
             return '';
         }
-        
-        // If the route starts with the baseUrl, return the relative path
-        const baseUrl = this.#config.baseUrl;
-        if (baseUrl !== '/' && fullRoute.startsWith(baseUrl)) {
-            return fullRoute.substring(baseUrl.length) || '/';
-        }
-        
-        // Otherwise return the route as is
-        return fullRoute;
+
+        return Core_ConfigService.#stripBasePrefix(fullRoute, this.#config.baseUrl);
     }
 
     /**
@@ -154,5 +155,31 @@ export class Core_ConfigService {
     detectEnvironment() {
         // Default implementation - does nothing
         // Child classes can override this method to detect their specific environment
+    }
+
+    /**
+     * Removes a normalized base prefix from a path (exact segment match only).
+     * @param {string} fullPath
+     * @param {string} baseUrl
+     * @returns {string}
+     */
+    static #stripBasePrefix(fullPath, baseUrl) {
+        if (!fullPath) {
+            return '/';
+        }
+
+        if (!baseUrl || baseUrl === '/') {
+            return fullPath;
+        }
+
+        if (fullPath === baseUrl) {
+            return '/';
+        }
+
+        if (fullPath.startsWith(baseUrl + '/')) {
+            return fullPath.slice(baseUrl.length) || '/';
+        }
+
+        return fullPath;
     }
 }

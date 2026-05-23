@@ -32,14 +32,20 @@ export class Core_SemanticNotifService {
     * @param {number} [duration=3000] - Duration in ms before auto-dismiss (0 = persistent).
     */
    showNotif(message, type = 'info', duration = 3000) {
-      // Create the new notification element
       const notification = document.createElement('div');
       notification.className = `ui ${type} message`;
       notification.style.marginBottom = '10px';
-      notification.innerHTML = `
-        <i class="close icon"></i>
-        <div class="header" style="padding-right:15px;">${message}</div>
-      `;
+
+      const closeIcon = document.createElement('i');
+      closeIcon.className = 'close icon';
+
+      const header = document.createElement('div');
+      header.className = 'header';
+      header.style.paddingRight = '15px';
+      header.textContent = message;
+
+      notification.appendChild(closeIcon);
+      notification.appendChild(header);
 
       // Add the notification to the container
       this.container.appendChild(notification);
