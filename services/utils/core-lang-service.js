@@ -139,11 +139,51 @@ export class Core_LangService {
    }
 
    /**
+    * Resolves the DOM node that should receive a label update.
+    * When {@link info.child} is set, the selector is scoped to {@link host} only.
+    *
+    * @param {HTMLElement} host Element that carries data-core-lang.
+    * @param {Object} info Parsed lang entry.
+    * @returns {HTMLElement|null}
+    */
+   #resolveTarget(host, info) {
+      if (!info.child) {
+         return host;
+      }
+
+      if (typeof info.child !== 'string' || !info.child.trim()) {
+         try {
+            $svc('log').error('Invalid data-core-lang child selector', { element: host, info });
+         } catch (_) {}
+         return null;
+      }
+
+      const match = host.querySelector(info.child.trim());
+      if (!match) {
+         try {
+            $svc('log').error('data-core-lang child not found', {
+               element: host,
+               selector: info.child,
+               info,
+            });
+         } catch (_) {}
+         return null;
+      }
+
+      return /** @type {HTMLElement} */ (match);
+   }
+
+   /**
     * Updates a single element with the appropriate language label.
-    * @param {HTMLElement} elt The element to update.
-    * @param {Object} info The language info (container, name, attribute, rich).
+    * @param {HTMLElement} elt Host element that carries data-core-lang.
+    * @param {Object} info The language info (container, name, child, attribute, rich).
     */
    processOneElement(elt, info) {
+      const target = this.#resolveTarget(elt, info);
+      if (!target) {
+         return;
+      }
+
       let theValue = undefined;
 
       if ((this.#data[info.container])
@@ -161,12 +201,12 @@ export class Core_LangService {
       }
 
       if (info.attribute) {
-         elt.setAttribute(info.attribute, theValue);
+         target.setAttribute(info.attribute, theValue);
       } else if (info.rich === true) {
          // Opt-in only: author-controlled markup in translation files — never user input.
-         elt.innerHTML = theValue;
+         target.innerHTML = theValue;
       } else {
-         elt.textContent = theValue;
+         target.textContent = theValue;
       }
    }
 
