@@ -45,7 +45,7 @@ Webpack 5 and native ESM require explicit extensions. Do not rely on `fullySpeci
 - `trustedHtml` / `mountTrustedHtml` for author-controlled markup only (templates, static fragments).
 - i18n via `data-core-lang` uses `textContent` by default; set `"rich": true` in the JSON only when the label is intentional HTML from translation files.
 - Optional JSON keys on `data-core-lang`: `"attribute"`, `"child"` (selector scoped to the host), `"rich"`.
-- Components with internal DOM: template uses `data-core-lang` on the host; `captureLangDecl()` (in `Core_HTMLElement.render()`) stashes it on `data-core-lang-decl`, then `projectLangDecl(target)` re-applies it on the inner node each render.
+- Compound components (e.g. `core-menu-item`) may patch `"child"` on the host before render so `lang.process()` targets inner hooks.
 
 ## Ajax (`Core_AjaxService`)
 
