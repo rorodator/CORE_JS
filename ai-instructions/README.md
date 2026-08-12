@@ -2,6 +2,24 @@
 
 Platform layer — **lowest doll** in the stack. Shared by MyJourney, CORE_UX, and other CORE apps.
 
+**Cursor rules:** `.cursor/rules/core-js-platform.mdc`, `.cursor/rules/core-js-components.mdc`  
+**Workflow skills:** `.cursor/skills/core-js-add-service/`, `.cursor/skills/core-js-component/`
+
+| File | Topic |
+|------|--------|
+| [services.md](./services.md) | `$svc()` registry, ajax, logging, adding platform services |
+| [components.md](./components.md) | Core_HTMLElement / Core_HBSElement lifecycle, bindings |
+| [internationalization.md](./internationalization.md) | `data-core-lang`, `$svc('lang').process()` |
+| (this file) | Scope, nesting, ESM, DOM, ajax, router, config |
+
+## Maintaining rules & skills
+
+Add or update **`.cursor/rules/`**, **`ai-instructions/`**, and **`.cursor/skills/`** in **this repo** when the change is:
+
+- `$svc` platform services, ESM/DOM utils, `Core_HTMLElement` lifecycle, ajax/router/lang primitives — anything **reusable with no app domain and no `<core-*>` UI**.
+
+Do **not** duplicate these rules in MyJourney. App-specific `$svc('user')`, `mj-*` loaders → MyJourney only. Cross-repo encapsulation: MyJourney `ai-instructions/layering.md`, `.cursor/rules/encapsulation.mdc`.
+
 ## Scope
 
 Put code here when it is a **generic primitive** with **no app domain** and **no UI kit markup**:
@@ -41,9 +59,10 @@ Webpack 5 and native ESM require explicit extensions. Do not rely on `fullySpeci
 
 ## DOM / HTML injection
 
+See also [internationalization.md](./internationalization.md) for `data-core-lang`.
+
 - `createElement({ text })` and `textContent` for user or API strings.
 - `trustedHtml` / `mountTrustedHtml` for author-controlled markup only (templates, static fragments).
-- i18n via `data-core-lang` uses `textContent` by default; set `"rich": true` in the JSON only when the label is intentional HTML from translation files.
 - Optional JSON keys on `data-core-lang`: `"attribute"`, `"child"` (selector scoped to the host), `"rich"`.
 - Compound components (e.g. `core-menu-item`) may patch `"child"` on the host before render so `lang.process()` targets inner hooks.
 

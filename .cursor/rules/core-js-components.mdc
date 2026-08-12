@@ -1,0 +1,43 @@
+---
+description: Core_HTMLElement / Core_HBSElement lifecycle, bindings, subscriptions, i18n hooks
+globs: CORE_JS/**/*.js
+alwaysApply: false
+---
+
+# CORE_JS — components (Core_HTMLElement / Core_HBSElement)
+
+Base classes: `lib/base/core-html-element.js`, `lib/base/core-hbs-element.js`. Details: `ai-instructions/components.md`, `ai-instructions/internationalization.md`.
+
+## Lifecycle
+
+1. **`onConnect()`** — persistent `addSub()` subscriptions, then `this.render()`.
+2. **`render()`** — `cleanFunctional()` → `ui_render()` → `$svc('lang').process(this)` (if lang active) → `ui_toFunctional()`.
+3. Do **not** override `ui_render()` on `Core_HBSElement` unless documented exception — pass template to `super(template)`.
+4. **`ui_toFunctional()`** — wire UI via `bindDelegated()` / `bindUI()` only.
+5. Override **`cleanFunctional()`** → always call `super.cleanFunctional()` first.
+
+## Event binding
+
+- **`bindDelegated(type, selector, handler)`** — default for clicks, changes, bubbling custom events on descendants.
+- **`bindUI(type, handler)`** — host-level listeners (keyboard shortcuts).
+- Prefer `data-*` hooks + `bindDelegated` — never `querySelector(...).addEventListener` in `ui_toFunctional`.
+- Listeners are aborted each `render()` — bindings are per render cycle.
+
+## Subscriptions
+
+- **`addSub(observable.subscribe(...))`** — long-lived streams (lang, user context, …).
+- **Do not** wrap one-shot AJAX in `addSub()`.
+
+## Handlebars (`Core_HBSElement`)
+
+```javascript
+import template from './template.hbs';
+super(template);
+```
+
+Template output is trusted author HTML only — never bind raw user/API strings in `.hbs`.
+
+## i18n
+
+- `data-core-lang` JSON in templates; live updates via `$svc('lang').process()`.
+- Re-`render()` on lang change only when DOM structure must rebuild — see `ai-instructions/internationalization.md`.

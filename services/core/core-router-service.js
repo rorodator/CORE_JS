@@ -29,7 +29,7 @@ export class Core_RouterService {
             Core_RouterService.router = null;
 
             // Stop intercepting clicks on links to restore the browser freedom
-            $(document).off('click', 'a', Core_RouterService.manageLink);
+            document.removeEventListener('click', Core_RouterService.manageLink);
 
             // Stop intercepting Prev/Next actions on the browser
             window.removeEventListener('popstate', Core_RouterService.forceRoute);
@@ -43,8 +43,8 @@ export class Core_RouterService {
          // Set this valid instance
          Core_RouterService.router = router;
 
-         // Intercept all clicks on links to route locally
-         $(document).on('click', 'a', Core_RouterService.manageLink);
+         // Intercept all clicks on links to route locally (delegated via closest('a') in manageLink)
+         document.addEventListener('click', Core_RouterService.manageLink);
 
          // Manage Prev/Next actions on the browser
          window.addEventListener('popstate', Core_RouterService.forceRoute);

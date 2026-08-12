@@ -1,0 +1,39 @@
+---
+description: CORE_JS platform — $svc(), services, ajax, ESM imports, logging
+globs: CORE_JS/**/*.js
+alwaysApply: false
+---
+
+# CORE_JS — platform
+
+Shared primitives for all CORE apps. Details: `ai-instructions/services.md`, `ai-instructions/README.md`.
+
+## Services (`$svc`)
+
+- **`$svc('name')`** is the only service accessor after bootstrap — never bypass with ad-hoc singletons.
+- Register in app `Core` subclass via `registerService(name, Class)` — platform services live in `CORE_JS/services/`.
+- **`window.$core`** holds the app Core instance; **`window.$svc`** resolves registered services.
+- Do **not** call `super.registerAllServices()` in app Core — opt-in only the services the app needs.
+
+## Logging
+
+- No `console.log` — use `$svc('log')` when needed; never at script load time.
+
+## Ajax (`Core_AjaxService`)
+
+- **2xx HTTP:** observable emits body; functional statuses (`SUCCESS`, …) stay in payload — handle in app code.
+- **Transport failure:** observable **errors** with `{ kind: 'transport', … }` — no `alert()` in CORE.
+- Apps override `getDefaultHeaders()` for CSRF, client version, etc.
+
+## ESM imports
+
+- Relative imports between CORE_JS modules **must include `.js` extension**.
+
+## DOM / subscriptions
+
+- User/API strings: `textContent` / `createElement({ text })`. `trustedHtml` for author-controlled markup only.
+- `addSub()` for persistent subscriptions (BehaviorSubject), not one-shot AJAX.
+
+## Before adding code here
+
+Generic primitive, no app domain, no `<core-*>` UI → CORE_JS. Component lifecycle → `core-js-components.mdc`. See MyJourney `ai-instructions/layering.md` for nesting rules.
