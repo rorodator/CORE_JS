@@ -15,7 +15,7 @@ Platform service registry and conventions. Cursor rule: `.cursor/rules/core-js-p
 3. Document in this file if it is a new public primitive.
 4. Apps opt in: `this.registerService('name', Class)` in their Core bootstrap.
 
-Apps add **domain** services in their own repo (e.g. MyJourney `$svc('user')`, `$svc('components')`) — not in CORE_JS.
+Apps add **domain** services in their own repo (e.g. `$svc('user')`, `$svc('components')`) — not in CORE_JS.
 
 ## Ajax
 
@@ -48,7 +48,6 @@ Business outcomes use payload `status` (`SUCCESS`, `LANG_ERROR`, …), not HTTP 
 
 ## Related
 
+- [layering.md](./layering.md), [encapsulation.md](./encapsulation.md)
 - Components: [components.md](./components.md)
 - i18n: [internationalization.md](./internationalization.md)
-- Nesting / placement: MyJourney `ai-instructions/layering.md`
-- App service table: MyJourney `ai-instructions/services.md`

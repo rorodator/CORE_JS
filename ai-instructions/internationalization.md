@@ -1,6 +1,6 @@
 # Internationalization — CORE_JS
 
-Client-side label application via `$svc('lang')`. Server label files and REST endpoints are configured per app (e.g. MyJourney `PHP/LANG/`).
+Client-side label application via `$svc('lang')`. Server label files and REST endpoints are configured per consuming app.
 
 ## `data-core-lang` JSON
 
@@ -72,4 +72,4 @@ For attributes on custom elements (e.g. modal title): `getLabel()` + `setAttribu
 
 ## App-specific
 
-- Label JSON files, REST routes, namespaces → consuming app (MyJourney: `ai-instructions/internationalization.md`).
+Label JSON files, REST routes, and namespaces are owned by the **consuming app** (not CORE_JS).

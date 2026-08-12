@@ -87,5 +87,5 @@ Check functional `response.status` (e.g. `SUCCESS`), not HTTP status codes alone
 
 ## App / kit integration (not CORE_JS)
 
-- **MyJourney:** lazy `mj-*` components, `AppComponentLoaderService` — see MyJourney `ai-instructions/components.md`.
-- **CORE_UX:** `<core-*>` kit components — see `CORE_UX/ai-instructions/components.md`.
+- **Consuming app:** lazy-loaded app components (app-specific tag prefix), component loader service — configured in the app repo.
+- **CORE_UX:** `<core-*>` kit components — see `CORE_UX/ai-instructions/components.md` when that repo is available in the workspace.

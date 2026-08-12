@@ -1,0 +1,14 @@
+---
+description: CORE_JS encapsulation — platform-only; self-contained standalone or symlinked
+alwaysApply: true
+---
+
+# CORE_JS — encapsulation
+
+**This repo = generic JS platform.** No app domain, no `<core-*>` UI.
+
+- Primitives → **CORE_JS** | Kit UI → **CORE_UX** | PHP platform → **CORE_PHP** | Product → **consuming app**
+- Rules/skills for `$svc`, base classes, ESM → **this repo** (`.cursor/`, `ai-instructions/`)
+- Docs use **local paths only** — must work standalone and when symlinked in an app workspace
+
+Details: `ai-instructions/layering.md`, `ai-instructions/encapsulation.md`.

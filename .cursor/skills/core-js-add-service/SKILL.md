@@ -7,17 +7,17 @@ description: Adds a new platform service to CORE_JS and documents opt-in registr
 
 ## Before coding
 
-1. Confirm the service is a **generic primitive** — no app domain, no `<core-*>` UI. See `ai-instructions/README.md` (Scope).
+1. Confirm a **generic primitive** — no app domain, no `<core-*>` UI. See `ai-instructions/README.md` (Scope), `ai-instructions/layering.md`.
 2. Read `.cursor/rules/core-js-platform.mdc` and `ai-instructions/services.md`.
 
 ## Steps
 
 1. **Implement** under `CORE_JS/services/<area>/core-<name>-service.js`.
 2. **ESM imports** — relative paths include `.js` extension.
-3. **Access** — consumers use `$svc('name')` after app registers the service; no ad-hoc singletons.
+3. **Access** — consumers use `$svc('name')` after the app registers the service; no ad-hoc singletons.
 4. **Logging** — `$svc('log')` only; no `console.log`.
 5. **Document** — add row to `ai-instructions/services.md` if public API.
-6. **App opt-in** — each app registers in its Core subclass (`registerService('name', Class)`); do **not** assume `super.registerAllServices()`.
+6. **App opt-in** — each consuming app registers in its Core subclass (`registerService('name', Class)`); do **not** assume `super.registerAllServices()`.
 
 ## Anti-patterns
 
@@ -34,6 +34,6 @@ description: Adds a new platform service to CORE_JS and documents opt-in registr
 - `.cursor/rules/core-js-platform.mdc`
 - `services/core/core.js` — registry
 
-## App follow-up
+## App follow-up (outside this repo)
 
-MyJourney: register in `AppCore.registerAllServices()` — see `ai-instructions/services.md`.
+Register the new service in the consuming app's Core bootstrap (`registerService(...)`). App bridge rules/skills are maintained in the app repo — not here.

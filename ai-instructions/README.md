@@ -1,12 +1,14 @@
 # AI instructions — CORE_JS
 
-Platform layer — **lowest doll** in the stack. Shared by MyJourney, CORE_UX, and other CORE apps.
+Platform layer — **lowest doll** in the stack. Shared by consuming apps, CORE_UX, and other CORE-based products.
 
-**Cursor rules:** `.cursor/rules/core-js-platform.mdc`, `.cursor/rules/core-js-components.mdc`  
+**Cursor rules:** `.cursor/rules/core-js-platform.mdc`, `.cursor/rules/core-js-components.mdc`, `.cursor/rules/encapsulation.mdc`  
 **Workflow skills:** `.cursor/skills/core-js-add-service/`, `.cursor/skills/core-js-component/`
 
 | File | Topic |
 |------|--------|
+| [encapsulation.md](./encapsulation.md) | Repo boundaries, dual context, rules/skills placement |
+| [layering.md](./layering.md) | Stack placement (standalone-safe) |
 | [services.md](./services.md) | `$svc()` registry, ajax, logging, adding platform services |
 | [components.md](./components.md) | Core_HTMLElement / Core_HBSElement lifecycle, bindings |
 | [internationalization.md](./internationalization.md) | `data-core-lang`, `$svc('lang').process()` |
@@ -18,7 +20,7 @@ Add or update **`.cursor/rules/`**, **`ai-instructions/`**, and **`.cursor/skill
 
 - `$svc` platform services, ESM/DOM utils, `Core_HTMLElement` lifecycle, ajax/router/lang primitives — anything **reusable with no app domain and no `<core-*>` UI**.
 
-Do **not** duplicate these rules in MyJourney. App-specific `$svc('user')`, `mj-*` loaders → MyJourney only. Cross-repo encapsulation: MyJourney `ai-instructions/layering.md`, `.cursor/rules/encapsulation.mdc`.
+Do **not** duplicate these rules in consuming apps. App-specific services and loaders live in the app repo. See [encapsulation.md](./encapsulation.md), [layering.md](./layering.md).
 
 ## Scope
 
@@ -27,19 +29,19 @@ Put code here when it is a **generic primitive** with **no app domain** and **no
 - Base classes (`Core_HTMLElement`, `Core_HBSElement`, …)
 - Platform services (`ajax`, `lang`, `router`, …) when registered via `$svc()`
 - Utilities (`dom.js`, subscription manager, …)
-- Shared algorithms/helpers with no knowledge of MyJourney routes, entities, or `<core-*>` tags
+- Shared algorithms/helpers with no knowledge of app routes, entities, or `<core-*>` tags
 
 Do **not** put here:
 
 - `<core-*>` components or Tailwind/CSS → **CORE_UX**
-- Feature screens, app services, business rules → **MyJourney**
+- Feature screens, app services, business rules → **consuming app**
 
 ## Nesting (mandatory)
 
 ```
-MyJourney  →  may import CORE_UX and CORE_JS
-CORE_UX    →  may import CORE_JS only
-CORE_JS    →  imports neither CORE_UX nor any app
+Consuming app  →  may import CORE_UX and CORE_JS
+CORE_UX        →  may import CORE_JS only
+CORE_JS        →  imports neither CORE_UX nor any app
 ```
 
 Never add an import from CORE_UX or an application repo into CORE_JS.
@@ -87,4 +89,4 @@ See also [internationalization.md](./internationalization.md) for `data-core-lan
 - Root: `''`, `'/'` → `'/'`. Subpath: `'MyJourney'`, `'/MyJourney/'` → `'/MyJourney'` (no trailing slash).
 - `getRelativePath()` / `getRoute()` strip the base with segment-safe matching (avoids `/MyJourney` vs `/MyJourneyExtra` bugs).
 
-See **MyJourney** `ai-instructions/layering.md` for the complete decision checklist and anti-patterns (same rules apply to all CORE repos).
+See [layering.md](./layering.md) for the complete decision checklist (applies to all CORE repos).

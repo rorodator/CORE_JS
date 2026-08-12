@@ -36,4 +36,4 @@ Shared primitives for all CORE apps. Details: `ai-instructions/services.md`, `ai
 
 ## Before adding code here
 
-Generic primitive, no app domain, no `<core-*>` UI → CORE_JS. Component lifecycle → `core-js-components.mdc`. See MyJourney `ai-instructions/layering.md` for nesting rules.
+Generic primitive, no app domain, no `<core-*>` UI → CORE_JS. Component lifecycle → `core-js-components.mdc`. See `ai-instructions/layering.md`.
