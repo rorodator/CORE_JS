@@ -5,12 +5,12 @@ Platform service registry and conventions. Cursor rule: `.cursor/rules/core-js-p
 ## Registry
 
 - **`Core`** (`services/core/core.js`): `registerService(name, Class)`, `window.$core`, `window.$svc(name)`.
-- Platform services ship in `CORE_JS/services/` (`log`, `ajax`, `lang`, `router`, `config`, `dom`, …).
+- Platform services ship in `services/` (`log`, `ajax`, `lang`, `router`, `config`, `dom`, …).
 - Apps subclass `Core` (e.g. `AppCore`) and register **opt-in** — do **not** call `super.registerAllServices()` unless the app truly needs every default CORE service.
 
 ## Adding a platform service
 
-1. Implement class under `CORE_JS/services/…`.
+1. Implement class under `services/…`.
 2. Export from appropriate barrel if the repo uses one.
 3. Document in this file if it is a new public primitive.
 4. Apps opt in: `this.registerService('name', Class)` in their Core bootstrap.

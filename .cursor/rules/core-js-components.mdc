@@ -1,6 +1,6 @@
 ---
 description: Core_HTMLElement / Core_HBSElement lifecycle, bindings, subscriptions, i18n hooks
-globs: CORE_JS/**/*.js
+globs: **/*.js
 alwaysApply: false
 ---
 

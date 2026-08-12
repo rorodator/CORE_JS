@@ -1,6 +1,6 @@
 ---
 description: CORE_JS platform — $svc(), services, ajax, ESM imports, logging
-globs: CORE_JS/**/*.js
+globs: **/*.js
 alwaysApply: false
 ---
 
@@ -11,7 +11,7 @@ Shared primitives for all CORE apps. Details: `ai-instructions/services.md`, `ai
 ## Services (`$svc`)
 
 - **`$svc('name')`** is the only service accessor after bootstrap — never bypass with ad-hoc singletons.
-- Register in app `Core` subclass via `registerService(name, Class)` — platform services live in `CORE_JS/services/`.
+- Register in app `Core` subclass via `registerService(name, Class)` — platform services live in `services/`.
 - **`window.$core`** holds the app Core instance; **`window.$svc`** resolves registered services.
 - Do **not** call `super.registerAllServices()` in app Core — opt-in only the services the app needs.
 

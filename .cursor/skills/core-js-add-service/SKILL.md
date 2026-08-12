@@ -12,7 +12,7 @@ description: Adds a new platform service to CORE_JS and documents opt-in registr
 
 ## Steps
 
-1. **Implement** under `CORE_JS/services/<area>/core-<name>-service.js`.
+1. **Implement** under `services/<area>/core-<name>-service.js`.
 2. **ESM imports** — relative paths include `.js` extension.
 3. **Access** — consumers use `$svc('name')` after the app registers the service; no ad-hoc singletons.
 4. **Logging** — `$svc('log')` only; no `console.log`.

@@ -14,7 +14,7 @@ description: Creates a custom element on Core_HTMLElement or Core_HBSElement. Us
 
 | Layer | Where |
 |-------|--------|
-| Platform base / util | `CORE_JS/lib/` or `CORE_JS/components/` |
+| Platform base / util | `lib/` or `components/` |
 | Generic UI kit | **CORE_UX** (`<core-*>`) — not CORE_JS |
 | App feature UI | **Consuming app** (app-specific tag prefix) |
 

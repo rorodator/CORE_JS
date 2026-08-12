@@ -28,10 +28,7 @@ When you introduce a **reusable JS platform pattern**:
 
 ## Dual context
 
-All paths in CORE_JS docs are **relative to this repository root**. They work when:
-
-- this repo is opened **standalone** in Cursor, or
-- it is **symlinked** inside a consuming app (e.g. `CORE_JS/`)
+All paths in CORE_JS docs are **relative to this repository root**. Rules use **repo-relative globs** (`**/*.js`) — they apply here when opened standalone or under a symlink (e.g. `CORE_JS/` in an app workspace).
 
 CORE docs must **never require** an app file to be understood. Optional app examples may name a specific consumer (e.g. MyJourney) but must not be the only instructions.
 
