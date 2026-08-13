@@ -37,3 +37,5 @@ description: Adds a new platform service to CORE_JS and documents opt-in registr
 ## App follow-up (outside this repo)
 
 Register the new service in the consuming app's Core bootstrap (`registerService(...)`). App bridge rules/skills are maintained in the app repo — not here.
+
+For an app-domain capability rather than a CORE platform primitive, use the sibling `core-js-application-service` skill and keep the implementation in the consuming app.

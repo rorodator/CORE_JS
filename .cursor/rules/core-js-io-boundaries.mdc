@@ -1,0 +1,17 @@
+---
+description: CORE_JS application boundary — components express intent; owning services perform IO
+globs: **/*.js
+alwaysApply: false
+---
+
+# Component / service IO boundary
+
+- Components **must not perform IO directly**. HTTP, persistence, storage, external APIs, and other external-resource access belong to an owning registered service consumed through `$svc(...)`.
+- Components express application intent through semantic operations such as `$svc('orders').submit(order)`.
+- Endpoint paths, HTTP methods, transport payload names, protocol conventions, and technical response normalization belong to the owning service.
+- Domain services may use lower-level primitives such as `$svc('ajax')`; do not expose a generic `post(path, payload)` wrapper as an application API.
+- Services own coherent non-visual application capabilities, including central behavior that has only one current caller when the knowledge belongs to the capability.
+- Components remain responsible for rendering, DOM interaction, focus, modals, visual notifications, routing UI, and local UI state.
+- Do not move deterministic domain calculations into a client service when another layer is already their source of truth.
+
+Details and examples: `ai-instructions/services.md`.

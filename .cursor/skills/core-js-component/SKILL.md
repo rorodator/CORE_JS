@@ -37,15 +37,17 @@ Override `ui_render()` to build DOM (no Handlebars). Same binding/subscription r
 | Wrong | Right |
 |-------|-------|
 | `querySelector(...).addEventListener` in `ui_toFunctional` | `bindDelegated` / `bindUI` |
-| `addSub` on one-shot AJAX | plain `.subscribe()` |
+| `addSub` on one-shot application operation | plain `.subscribe()` |
 | Override `ui_render()` on Core_HBSElement without reason | `super(template)` |
 | User input in `.hbs` unescaped | `textContent` / safe patterns |
 | Giant page component owning several workflows | Parent composition + focused functional child components |
-| Service introduced only to shorten a component | Component boundary; service only for shared state/orchestration |
+| Service introduced only to shorten a component | Service only for an owned capability/IO boundary, central behavior, or shared state/orchestration |
 
 ## References
 
 - `ai-instructions/components.md`
+- `ai-instructions/services.md`
+- `.cursor/rules/core-js-io-boundaries.mdc`
 - `lib/base/core-html-element.js`
 - `lib/base/core-hbs-element.js`
 

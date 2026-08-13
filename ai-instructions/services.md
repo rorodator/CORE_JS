@@ -17,6 +17,48 @@ Platform service registry and conventions. Cursor rule: `.cursor/rules/core-js-p
 
 Apps add **domain** services in their own repo (e.g. `$svc('user')`, `$svc('components')`) — not in CORE_JS.
 
+## Application capability and IO boundary
+
+CORE-based applications use this dependency direction:
+
+```
+component → $svc('domain') → $svc('ajax') / another IO primitive → external resource
+```
+
+| Responsibility | Owner |
+|---|---|
+| UI, interaction, DOM, local loading/busy/modal state | component |
+| Coherent application capability and central non-visual behavior | `$svc('domain')` |
+| Endpoint, HTTP method, backend parameter names, transport normalization | owning domain service |
+| Generic HTTP transport | `$svc('ajax')` |
+
+Components must not call IO primitives directly. The owning service is selected by who should know the operation, not by caller count: creating an entry belongs to a SmallSteps service even with one current caller. Keep backend-derived business calculations in their existing source of truth; a client service transports or normalizes those results rather than recomputing them.
+
+**Good — semantic application intent:**
+
+```javascript
+$svc('smallSteps').addEntry(stepId, observation, { confirmSameDate });
+```
+
+The owning app service translates that command to its endpoint, method, `small_step_id`, `confirm_same_date`, and application outcomes. It may preserve the lower-level Observable when that matches the app async model.
+
+**Wrong — transport knowledge in a component:**
+
+```javascript
+$svc('ajax').callAPI('small-steps/entries/create', {
+    small_step_id: stepId,
+    confirm_same_date: true,
+}, 'POST');
+```
+
+**Wrong — a REST-shaped pass-through service:**
+
+```javascript
+$svc('smallSteps').post('entries/create', payload);
+```
+
+Application services do not own rendering, HBS, DOM queries, focus, modals, spinners, visual notifications, or CSS state. See `.cursor/rules/core-js-io-boundaries.mdc`.
+
 ## Ajax
 
 See `Core_AjaxService` (`services/api/core-ajax-service.js`):

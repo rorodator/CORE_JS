@@ -2,14 +2,15 @@
 
 Platform layer — **lowest doll** in the stack. Shared by consuming apps, CORE_UX, and other CORE-based products.
 
-**Cursor rules:** `.cursor/rules/core-js-platform.mdc`, `.cursor/rules/core-js-components.mdc`, `.cursor/rules/encapsulation.mdc`  
-**Workflow skills:** `.cursor/skills/core-js-add-service/`, `.cursor/skills/core-js-component/`
+**Cursor rules:** `.cursor/rules/core-js-platform.mdc`, `.cursor/rules/core-js-components.mdc`, `.cursor/rules/core-js-io-boundaries.mdc`, `.cursor/rules/encapsulation.mdc`
+
+**Workflow skills:** `.cursor/skills/core-js-add-service/`, `.cursor/skills/core-js-application-service/`, `.cursor/skills/core-js-component/`
 
 | File | Topic |
 |------|--------|
 | [encapsulation.md](./encapsulation.md) | Repo boundaries, dual context, rules/skills placement |
 | [layering.md](./layering.md) | Stack placement (standalone-safe) |
-| [services.md](./services.md) | `$svc()` registry, ajax, logging, adding platform services |
+| [services.md](./services.md) | `$svc()` registry, application IO boundaries, ajax, logging, adding services |
 | [components.md](./components.md) | Core_HTMLElement / Core_HBSElement lifecycle, bindings |
 | [internationalization.md](./internationalization.md) | `data-core-lang`, `$svc('lang').process()` |
 | (this file) | Scope, nesting, ESM, DOM, ajax, router, config |

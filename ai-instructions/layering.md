@@ -27,7 +27,7 @@ Consuming app   domain PHP (App/Rest, App/IO, migrations)
    - Yes, UI → **CORE_UX** (presentation) or **CORE_JS** (non-UI primitive)
    - Yes, not UI → **CORE_JS** or **CORE_PHP**
 
-2. **`$svc('ajax')`, domain rules, or app routes/entities?** → **consuming app** (never CORE_UX)
+2. **`$svc('ajax')`, domain rules, or app routes/entities?** → **consuming app** (never CORE_UX); components express intent through the owning app service, which alone knows transport details.
 
 3. **`<core-*>` tag or kit CSS?** → **CORE_UX** (app tags use an app-specific prefix, e.g. `mj-*`)
 

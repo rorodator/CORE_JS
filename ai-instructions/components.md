@@ -30,8 +30,8 @@ Prefer explicit boundaries:
 
 - parent → child: properties or a deliberate setter;
 - child → parent: bubbling, composed custom events;
-- shared service: only for state or orchestration genuinely shared across
-  multiple components, never solely to shorten a file.
+- application service: for an owned non-visual capability, IO boundary, central
+  behavior, or genuinely shared state/orchestration — never solely to shorten a file.
 
 Do not split inert markup into components without behavioral or reuse value.
 The goal is to prevent both duplicated functionality and giant components whose
@@ -100,16 +100,16 @@ ui_toFunctional() {
 
 - Prefer `data-*` + `bindDelegated` over manual `addEventListener` in `ui_toFunctional`.
 - Especially inside slot/portals (`core-modal`, `core-side-panel`, …) where children re-mount.
-- Long-lived subscriptions → `onConnect()` + `addSub()`; one-shot AJAX → plain `.subscribe()`.
+- Long-lived subscriptions → `onConnect()` + `addSub()`; one-shot application operations → plain `.subscribe()`.
 
 ## Subscriptions
 
 - `this.addSub(observable.subscribe(...))` registers with `Core_SubscriptionManager` — cleaned on disconnect.
-- Do **not** wrap one-shot AJAX in `addSub()`.
+- Do **not** wrap one-shot application operations in `addSub()`.
 
-## API responses (in component handlers)
+## Application outcomes (in component handlers)
 
-Check functional `response.status` (e.g. `SUCCESS`), not HTTP status codes alone — see `ai-instructions/services.md`.
+Components consume semantic outcomes from the owning application service. They do not know endpoint paths, HTTP methods, transport payload names, or raw protocol conventions. See `ai-instructions/services.md`.
 
 ## App / kit integration (not CORE_JS)
 

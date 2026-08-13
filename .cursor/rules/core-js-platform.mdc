@@ -21,6 +21,7 @@ Shared primitives for all CORE apps. Details: `ai-instructions/services.md`, `ai
 
 ## Ajax (`Core_AjaxService`)
 
+- Ajax is a generic transport primitive used by an owning service, not directly by components — see `core-js-io-boundaries.mdc`.
 - **2xx HTTP:** observable emits body; functional statuses (`SUCCESS`, …) stay in payload — handle in app code.
 - **Transport failure:** observable **errors** with `{ kind: 'transport', … }` — no `alert()` in CORE.
 - Apps override `getDefaultHeaders()` for CSRF, client version, etc.
@@ -32,7 +33,7 @@ Shared primitives for all CORE apps. Details: `ai-instructions/services.md`, `ai
 ## DOM / subscriptions
 
 - User/API strings: `textContent` / `createElement({ text })`. `trustedHtml` for author-controlled markup only.
-- `addSub()` for persistent subscriptions (BehaviorSubject), not one-shot AJAX.
+- `addSub()` for persistent subscriptions (BehaviorSubject), not one-shot application operations.
 
 ## Before adding code here
 
