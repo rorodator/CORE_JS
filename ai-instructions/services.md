@@ -22,17 +22,18 @@ Apps add **domain** services in their own repo (e.g. `$svc('user')`, `$svc('comp
 CORE-based applications use this dependency direction:
 
 ```
-component → $svc('domain') → $svc('ajax') / another IO primitive → external resource
+UI or orchestration → $svc('domain') → IO primitive → external resource
 ```
 
 | Responsibility | Owner |
 |---|---|
 | UI, interaction, DOM, local loading/busy/modal state | component |
+| Bootstrap, controller, or manager coordination | orchestration code calling semantic services |
 | Coherent application capability and central non-visual behavior | `$svc('domain')` |
 | Endpoint, HTTP method, backend parameter names, transport normalization | owning domain service |
 | Generic HTTP transport | `$svc('ajax')` |
 
-Components must not call IO primitives directly. The owning service is selected by who should know the operation, not by caller count: creating an entry belongs to a SmallSteps service even with one current caller. Keep backend-derived business calculations in their existing source of truth; a client service transports or normalizes those results rather than recomputing them.
+Components and non-service orchestration code must not call IO primitives directly. The owning service is selected by who should know the operation, not by caller count: creating an entry belongs to a SmallSteps service even with one current caller. Keep backend-derived business calculations in their existing source of truth; a client service transports or normalizes those results rather than recomputing them.
 
 **Good — semantic application intent:**
 
@@ -41,6 +42,24 @@ $svc('smallSteps').addEntry(stepId, observation, { confirmSameDate });
 ```
 
 The owning app service translates that command to its endpoint, method, `small_step_id`, `confirm_same_date`, and application outcomes. It may preserve the lower-level Observable when that matches the app async model.
+
+**Good bootstrap orchestration:**
+
+```javascript
+bootstrap() {
+    $svc('user').initializeApplicationContext().subscribe();
+}
+```
+
+The user/session service owns its endpoint, applies its central state, and normalizes transport failures. A bootstrap coordinates initialization without knowing those details.
+
+**Wrong bootstrap orchestration:**
+
+```javascript
+bootstrap() {
+    $svc('ajax').callAPI('bootstrap/context', {}, 'GET').subscribe();
+}
+```
 
 **Wrong — transport knowledge in a component:**
 
