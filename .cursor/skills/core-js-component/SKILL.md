@@ -26,6 +26,7 @@ description: Creates a custom element on Core_HTMLElement or Core_HBSElement. Us
 4. **`ui_toFunctional()`:** `bindDelegated()` / `bindUI()` only.
 5. **i18n:** `data-core-lang` in template; re-`render()` on lang change only if DOM must rebuild.
 6. **`customElements.define('tag-name', Class)`** at module bottom.
+7. **Responsibility check:** split autonomous functional regions (list, editor, interaction flow) into focused components; keep page-level composition in the parent.
 
 ## Steps (Core_HTMLElement only)
 
@@ -39,6 +40,8 @@ Override `ui_render()` to build DOM (no Handlebars). Same binding/subscription r
 | `addSub` on one-shot AJAX | plain `.subscribe()` |
 | Override `ui_render()` on Core_HBSElement without reason | `super(template)` |
 | User input in `.hbs` unescaped | `textContent` / safe patterns |
+| Giant page component owning several workflows | Parent composition + focused functional child components |
+| Service introduced only to shorten a component | Component boundary; service only for shared state/orchestration |
 
 ## References
 

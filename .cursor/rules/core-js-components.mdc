@@ -28,6 +28,15 @@ Base classes: `lib/base/core-html-element.js`, `lib/base/core-hbs-element.js`. D
 - **`addSub(observable.subscribe(...))`** — long-lived streams (lang, user context, …).
 - **Do not** wrap one-shot AJAX in `addSub()`.
 
+## Functional boundaries
+
+- Component boundaries should reflect **functional responsibilities**, not only visual sections or file-size targets.
+- A component owns one coherent behavior/state boundary; parents compose children and coordinate only page-level concerns.
+- Extract an autonomous list, editor, picker, timeline, or interaction flow when it has its own state and actions. Do not keep it inside a page until the page becomes a second implementation of that feature.
+- Prefer one canonical component over duplicated functional behavior. Share data through explicit properties/methods and report changes through bubbling custom events.
+- Avoid both extremes: do not create components for inert markup fragments, and do not keep unrelated workflows in a giant component merely because no duplication exists yet.
+- Do not introduce a service only to reduce component size; services require genuinely shared state or orchestration.
+
 ## Handlebars (`Core_HBSElement`)
 
 ```javascript

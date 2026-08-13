@@ -11,6 +11,32 @@ Base classes for custom elements. Cursor rule: `.cursor/rules/core-js-components
 
 Apps and CORE_UX extend these — do not fork lifecycle logic in app repos.
 
+## Design components around functional ownership
+
+Component decomposition should mirror the product behavior:
+
+- a page owns page loading, page-level state, and composition;
+- a list owns collection rendering and collection interactions;
+- an editor owns its draft, validation, save, and cancel flow;
+- a focused child reports meaningful changes to its parent instead of making
+  the parent reimplement its behavior.
+
+Extract a child when a region has a coherent state lifecycle or interaction
+contract of its own. File size is a useful warning signal, but not the design
+criterion. Conversely, absence of duplicated code does not justify a component
+that owns several unrelated workflows.
+
+Prefer explicit boundaries:
+
+- parent → child: properties or a deliberate setter;
+- child → parent: bubbling, composed custom events;
+- shared service: only for state or orchestration genuinely shared across
+  multiple components, never solely to shorten a file.
+
+Do not split inert markup into components without behavioral or reuse value.
+The goal is to prevent both duplicated functionality and giant components whose
+responsibilities no longer match the functional model.
+
 ## Minimal example (`Core_HBSElement`)
 
 ```javascript
