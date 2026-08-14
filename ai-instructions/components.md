@@ -37,6 +37,15 @@ Do not split inert markup into components without behavioral or reuse value.
 The goal is to prevent both duplicated functionality and giant components whose
 responsibilities no longer match the functional model.
 
+## Container boundaries
+
+- A component owns only its own DOM.
+- A child must not query or manipulate a concrete parent (`closest('parent-tag')`,
+  parent-owned selectors, focus restore via parent DOM).
+- Parent → child: setters, declared public methods, or command events.
+- Child → outside: semantic bubbling `CustomEvent`s; keep `detail` free of DOM refs.
+- Parent-owned focus restoration stays in the parent after child composer close events.
+
 ## Minimal example (`Core_HBSElement`)
 
 ```javascript

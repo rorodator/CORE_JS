@@ -37,6 +37,17 @@ Base classes: `lib/base/core-html-element.js`, `lib/base/core-hbs-element.js`. D
 - Avoid both extremes: do not create components for inert markup fragments, and do not keep unrelated workflows in a giant component merely because no duplication exists yet.
 - Do not introduce a service only to reduce component size; services require an owned application capability, IO boundary, central behavior, or genuinely shared state/orchestration. See `core-js-io-boundaries.mdc`.
 
+## Container boundaries
+
+- A component owns only its own DOM.
+- A child must not discover, query, or manipulate its concrete parent container.
+- Forbidden: `closest('specific-parent')`, parent-owned selector queries, passing parent
+  `HTMLElement` references into children mainly to restore focus on parent controls.
+- Allowed parent → child: properties/setters, declared public methods, command events.
+- Preferred child → outside: semantic bubbling `CustomEvent`s with light business
+  context only — not DOM references in `detail`.
+- Parent-owned focus restoration stays in the parent after child composer close events.
+
 ## Handlebars (`Core_HBSElement`)
 
 ```javascript
