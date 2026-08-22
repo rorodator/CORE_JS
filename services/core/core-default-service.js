@@ -11,7 +11,7 @@ export class Core_DefaultService {
          isActivated: false
       };
       this.router = {
-         emptyURL: '/'
+         emptyURL: 'home'
       };
    }
 }
