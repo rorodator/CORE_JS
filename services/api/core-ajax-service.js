@@ -226,7 +226,14 @@ export class Core_AjaxService {
     */
    #emitTransportError(error) {
       try {
-         $svc('log').error('Ajax transport error', error);
+         $svc('log').error({
+            event: Core_AjaxService.TRANSPORT_ERROR_EVENT,
+            message: 'Ajax transport error',
+            kind: error.kind,
+            status: error.status,
+            statusText: error.statusText,
+            errorMessage: error.message,
+         });
       } catch (_) {}
 
       try {
