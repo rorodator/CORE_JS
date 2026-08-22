@@ -5,17 +5,62 @@ Platform service registry and conventions. Cursor rule: `.cursor/rules/core-js-p
 ## Registry
 
 - **`Core`** (`services/core/core.js`): `registerService(name, Class)`, `window.$core`, `window.$svc(name)`.
-- Platform services ship in `services/` (`log`, `ajax`, `lang`, `router`, `config`, `dom`, …).
-- Apps subclass `Core` (e.g. `AppCore`) and register **opt-in** — do **not** call `super.registerAllServices()` unless the app truly needs every default CORE service.
+- **`Core.registerAllServices()`** registers the platform kernel listed below.
+- Apps subclass `Core` (e.g. `AppCore`) and register **opt-in** — do **not** call `super.registerAllServices()` unless the app truly needs every kernel service; pick only what the app uses.
+
+## Platform kernel services
+
+| Name | Class | Role |
+|------|-------|------|
+| `log` | `Core_LogService` | Centralized logging |
+| `ajax` | `Core_AjaxService` | Generic HTTP transport |
+| `router` | `Core_RouterService` | SPA navigation, link interception |
+| `resource` | `Core_ResourceService` | Shared resource locks |
+| `config` | `Core_ConfigService` | Base URL, route map, environment |
+| `default` | `Core_DefaultService` | Platform default constants |
+| `lang` | `Core_LangService` | Label loading and `data-core-lang` processing |
+| `browser` | `Core_BrowserService` | Scroll/CSS document helpers (router kernel) |
+| `dom` | `Core_DomService` | DOM helpers (`lib/utils/dom.js`) |
+
+Opt-in platform utilities (not in `registerAllServices()` by default):
+
+| Name | Class | Role |
+|------|-------|------|
+| `components` | `Core_ComponentLoaderService` | Lazy custom-element loader registry |
+
+Apps add **domain** services in their own repo (e.g. `$svc('user')`, `$svc('journeys')`) — not in CORE_JS.
+
+## Ajax: transport vs application API
+
+**`Core_AjaxService`** (`services/api/core-ajax-service.js`) is the generic HTTP transport primitive. It exposes only these request methods:
+
+- `$svc('ajax').get(url, headers?)`
+- `$svc('ajax').getJSON(url, body, headers?)` — POST with a JSON body (legacy method name)
+- `$svc('ajax').put(url, body, headers?)`
+- `$svc('ajax').patch(url, body, headers?)`
+- `$svc('ajax').delete(url, headers?)`
+
+Supporting hooks (also on `Core_AjaxService`):
+
+- `mapURL(url)` — identity by default; override to prefix a base URL
+- `getDefaultHeaders(method)` — override in the app Ajax subclass for CSRF, request id, etc.
+- `onTransportError(error)` / `core-ajax-transport-error` — transport UX hook
+
+Transport contract:
+
+- **2xx:** observable emits body; functional `status` stays in payload — handle in app code.
+- **Transport / HTTP failure:** observable **errors** with `{ kind: 'transport', status, statusText, message, response }`.
+
+**`callAPI()` is not a `Core_AjaxService` method.** An application subclass (e.g. MyJourney `AppAjaxService`) may add `callAPI(apiName, params, method)` and own `/api/` prefix resolution, auth headers, and app-specific error UX. Register that subclass as `$svc('ajax')`.
+
+Components never call `$svc('ajax')` — neither the transport methods above nor an application `callAPI`. They use owning domain services.
 
 ## Adding a platform service
 
 1. Implement class under `services/…`.
 2. Export from appropriate barrel if the repo uses one.
 3. Document in this file if it is a new public primitive.
-4. Apps opt in: `this.registerService('name', Class)` in their Core bootstrap.
-
-Apps add **domain** services in their own repo (e.g. `$svc('user')`, `$svc('components')`) — not in CORE_JS.
+4. Add to `Core.registerAllServices()` only when CORE_JS itself depends on the contract at kernel level; otherwise document opt-in registration for apps.
 
 ## Application capability and IO boundary
 
@@ -57,17 +102,17 @@ The user/session service owns its endpoint, applies its central state, and norma
 
 ```javascript
 bootstrap() {
-    $svc('ajax').callAPI('bootstrap/context', {}, 'GET').subscribe();
+    $svc('ajax').get('/api/bootstrap/context').subscribe();
 }
 ```
 
 **Wrong — transport knowledge in a component:**
 
 ```javascript
-$svc('ajax').callAPI('small-steps/entries/create', {
+$svc('ajax').getJSON('/api/small-steps/entries/create', {
     small_step_id: stepId,
     confirm_same_date: true,
-}, 'POST');
+});
 ```
 
 **Wrong — a REST-shaped pass-through service:**
@@ -77,16 +122,6 @@ $svc('smallSteps').post('entries/create', payload);
 ```
 
 Application services do not own rendering, HBS, DOM queries, focus, modals, spinners, visual notifications, or CSS state. See `.cursor/rules/core-js-io-boundaries.mdc`.
-
-## Ajax
-
-See `Core_AjaxService` (`services/api/core-ajax-service.js`):
-
-- Client shape: `$svc('ajax').callAPI('path/segment', params, 'GET'|'POST')` → app resolves to `/api/…`.
-- **2xx:** `next` with body; check functional `status` in app code.
-- **Transport / HTTP failure:** `error` with `{ kind: 'transport', status, statusText, message, response }`.
-- Override `getDefaultHeaders(method)` in app Ajax subclass for CSRF, request id, etc.
-- Listen for `core-ajax-transport-error` on `document` for global UX.
 
 ## Router & config
 

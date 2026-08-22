@@ -1,15 +1,10 @@
 import { Core_AjaxService } from "../api/core-ajax-service.js";
 import { Core_ResourceService } from "../ui/core-resource-service.js";
-import { Core_SemanticService } from "../ui/core-semantic-service.js";
 import { Core_LogService } from "./core-log-service.js";
 import { Core_DefaultService } from "./core-default-service.js";
-import { Core_FilterFactoryService } from "../data/core-filter-factory-service.js";
-import { Core_UtilService } from "../utils/core-util-service.js";
 import { Core_LangService } from "../utils/core-lang-service.js";
-import { Core_CartService } from "../data/core-cart-service.js";
 import { Core_RouterService } from "./core-router-service.js";
 import { Core_BrowserService } from "../ui/core-browser-service.js";
-import { Core_ZipService } from "../utils/core-zip-service.js";
 import { Core_DomService } from "../utils/core-dom-service.js";
 import { Core_ConfigService } from "./core-config-service.js";
 
@@ -42,23 +37,19 @@ export class Core {
    }
 
    /**
-    * Registers all services provided by this central object.
-    * If this method is overridden in child classes, the parent method should be called.
+    * Registers platform kernel services for generic CORE-based applications.
+    * Consuming apps subclass Core and opt in via registerService(); they do not
+    * need every service here — call only the registrations the app requires.
     */
    registerAllServices() {
       this.registerService('log', Core_LogService);
       this.registerService('ajax', Core_AjaxService);
       this.registerService('router', Core_RouterService);
       this.registerService('resource', Core_ResourceService);
-      this.registerService('semantic', Core_SemanticService);
-      this.registerService('default', Core_DefaultService);
-      this.registerService('filterFactory', Core_FilterFactoryService);
-      this.registerService('util', Core_UtilService);
-      this.registerService('cart', Core_CartService);
-      this.registerService('browser', Core_BrowserService);
-      this.registerService('zip', Core_ZipService);
-      this.registerService('lang', Core_LangService);
       this.registerService('config', Core_ConfigService);
+      this.registerService('default', Core_DefaultService);
+      this.registerService('lang', Core_LangService);
+      this.registerService('browser', Core_BrowserService);
       this.registerService('dom', Core_DomService);
    }
 

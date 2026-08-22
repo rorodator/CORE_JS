@@ -69,6 +69,12 @@ See also [internationalization.md](./internationalization.md) for `data-core-lan
 - Optional JSON keys on `data-core-lang`: `"attribute"`, `"child"` (selector scoped to the host), `"rich"`.
 - Compound components (e.g. `core-menu-item`) may patch `"child"` on the host before render so `lang.process()` targets inner hooks.
 
+## Platform kernel
+
+`Core.registerAllServices()` registers: `log`, `ajax`, `router`, `resource`, `config`, `default`, `lang`, `browser`, `dom`.
+
+Apps opt in individually in their Core subclass — see [services.md](./services.md) for the full table and the distinction between `Core_AjaxService` (transport) and application Ajax subclasses.
+
 ## Ajax (`Core_AjaxService`)
 
 - **2xx HTTP**: observable emits the response body (`next`). Functional statuses (`SUCCESS`, `LANG_ERROR`, …) stay in the payload — handle in app code.
