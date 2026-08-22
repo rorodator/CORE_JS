@@ -1,0 +1,12 @@
+{
+  "name": "core-js",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node --import ./tests/bootstrap.mjs --test tests/*.test.js"
+  },
+  "devDependencies": {
+    "linkedom": "^0.18.13",
+    "rxjs": "^7.8.2"
+  }
+}
