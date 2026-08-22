@@ -92,6 +92,29 @@ See `Core_AjaxService` (`services/api/core-ajax-service.js`):
 
 - `$svc('router').goTo(url)` — link interception rules in `Core_RouterService` (modifier-clicks, `target="_blank"`, external URLs ignored).
 - `$svc('config').getRoute('name')`, `getBaseUrl()` — base URL normalized via `Core_ConfigService.normalizeBaseUrl()`.
+- **Lazy route components:** `Core_Router` calls `$svc('components').ensure(tag)` before rendering a `tagName` route. On failure it logs via `$svc('log').error(...)` and dispatches `core-router-component-load-error` on `document` — it does **not** call `$svc('notif')` or render the element. The current view stays unchanged. Apps (or CORE_UX) may listen for the event to show toast, modal, error state, etc.
+
+### `core-router-component-load-error`
+
+Dispatched on `document` when `components.ensure(tag)` rejects before a tag-based route is rendered.
+
+**Detail (stable):**
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `tag` | `string` | Custom element tag that failed to load |
+| `url` | `string` | Matched route URL |
+| `route` | `string\|null` | Route name or path from the route descriptor |
+| `error` | `Error` | Loader rejection (e.g. missing mapping, import failure) |
+
+```javascript
+document.addEventListener('core-router-component-load-error', (event) => {
+   const { tag, url, route, error } = event.detail;
+   // Delegate visual feedback to CORE_UX or app code (toast, inline error, …)
+});
+```
+
+Log payload mirrors `tag`, `url`, `route`, and technical `message`/`name` — no user-provided content.
 
 ## Lang & i18n hooks
 
