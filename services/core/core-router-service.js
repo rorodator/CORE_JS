@@ -3,14 +3,10 @@ import { Core_HTMLElement } from "../../lib/base/core-html-element.js";
 export class Core_RouterService {
    static router = null;    // The one instance for the one Router that can be instantiated
    static instance = null;  // Quick access to the local instance of the service  
-   #rootPath;               // A constant used only to build the relative path 
 
    constructor() {
       // This is required to access the object in some static methods later on
       Core_RouterService.instance = this;
-
-      // Init from repo
-      this.#rootPath = $svc('default').router.rootPath;
    }
 
    /**
@@ -202,18 +198,5 @@ export class Core_RouterService {
       } else {
          throw new Error('Calling Core_RouterService::forceRoute whilst no router object available');
       }
-   }
-
-   /**
-    * Returns the absolute path for a given relative path, ensuring no duplicate slashes.
-    * @param {string} relativePath The relative path to append.
-    * @returns {string} The absolute path.
-    */
-   getAbsolutePath(relativePath) {
-      // Remove trailing slash from rootPath if present
-      let root = this.#rootPath.endsWith('/') ? this.#rootPath.slice(0, -1) : this.#rootPath;
-      // Remove leading slash from relativePath if present
-      let rel = relativePath.startsWith('/') ? relativePath.slice(1) : relativePath;
-      return `${root}/${rel}`;
    }
 }

@@ -1,29 +1,33 @@
 # CORE_JS
 
-Bibliothèque JavaScript générique et réutilisable pour les projets web.
+Bibliothèque JavaScript générique et réutilisable pour les applications web basées sur CORE.
 
 ## Description
 
-CORE_JS fournit toutes les ressources génériques et réutilisables pour la partie JavaScript des applications web. Elle garantit que la fonction `$svc()` est disponible et que le singleton Core est instancié. Tous les services sont donc disponibles partout via `$svc()`.
+CORE_JS fournit les primitives browser partagées : registre `$svc()`, classes de base pour custom elements, routing SPA, transport HTTP générique, i18n hooks, et utilitaires DOM. Les applications consommatrices (MyJourney, etc.) enregistrent leurs services métier dans une sous-classe de `Core`.
 
-## Fonctionnalités principales
+## Services plateforme (kernel)
 
-- **Services Core** : Système de services centralisé avec `$svc()`
-- **Composants HTML** : Base pour les composants personnalisés avec `Core_HTMLElement`
-- **Gestion des souscriptions** : Système automatique de nettoyage des souscriptions
-- **Routing** : Système de routage pour les SPA
-- **Gestion des données** : Repositories, sources de données, filtres
-- **Interface utilisateur** : Composants Semantic UI, notifications
-- **Utilitaires** : Services de langue, compression, DOM, utilitaires généraux
+Enregistrés par `Core.registerAllServices()` — les apps opt-in via `registerService()` dans leur bootstrap :
 
-## Installation
+| Service | Rôle |
+|---------|------|
+| `log` | Journalisation centralisée |
+| `ajax` | Transport HTTP générique (`Core_AjaxService`) |
+| `router` | Navigation SPA et interception de liens |
+| `resource` | Verrous de ressources partagées (ex. API lang) |
+| `config` | Base URL, routes relatives, environnement |
+| `default` | Constantes plateforme par défaut |
+| `lang` | Labels i18n via API |
+| `browser` | Utilitaires scroll/CSS document (utilisé par le router) |
+| `dom` | Helpers DOM (`createElement`, `mountTrustedHtml`, …) |
 
-Cette bibliothèque est incluse dans les projets via des liens symboliques.
+Services applicatifs (ex. `AppAjaxService.callAPI`, `user`, `journeys`) vivent dans le repo consommateur — voir `ai-instructions/services.md`.
 
 ## Utilisation
 
 ```javascript
-// Accès aux services
+// Accès aux services après bootstrap
 const logService = $svc('log');
 const langService = $svc('lang');
 const dom = $svc('dom');
@@ -37,15 +41,15 @@ dom.createElement('button', { text: 'Save', attrs: { type: 'button' } });
 
 ## Structure
 
-- `lib/` : Classes de base et utilitaires (`lib/utils/dom.js` — `createElement`, `mountTrustedHtml`, attributs booléens/JSON)
-- `services/` : Services métier et techniques (`dom`, `log`, `lang`, …)
-- `components/` : Composants UI réutilisables
-- `templates/` : Templates Handlebars
-- `styles/` : Styles CSS
+- `lib/` — Classes de base (`Core_HTMLElement`, `Core_HBSElement`), router, utilitaires (`dom.js`, subscription manager)
+- `services/` — Services plateforme (`log`, `ajax`, `router`, `lang`, `dom`, …)
+- `templates/` — Helpers Handlebars partagés
+- `styles/` — CSS utilitaires génériques (`globals.css`)
 
 ## Développement
 
-Cette bibliothèque suit les règles de développement du projet MyManager :
-- Commentaires en anglais avec style JSDoc
-- Noms de variables, classes, fonctions en anglais
-- Utilisation obligatoire de `$svc('log')` au lieu de `console.log`
+- Commentaires en anglais (JSDoc)
+- Identifiants en anglais
+- `$svc('log')` obligatoire — pas de `console.log`
+
+Voir `ai-instructions/` et `.cursor/rules/` pour les conventions détaillées.
