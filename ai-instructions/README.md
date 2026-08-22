@@ -88,7 +88,7 @@ See also [internationalization.md](./internationalization.md) for `data-core-lan
 
 When a route uses `tagName` and `$svc('components').ensure(tag)` is available, `Core_Router` loads the module **before** mutating the DOM. On rejection:
 
-1. `$svc('log').error(...)` records `tag`, `url`, `route`, and the technical error.
+1. `$svc('log').error({ event, message, tag, url, route, errorName, errorMessage })` records route context and the technical error (single structured object — see [services.md](./services.md#core-router-component-load-error)).
 2. `document` receives `core-router-component-load-error` (`Core_Router.COMPONENT_LOAD_ERROR_EVENT`).
 3. The router **does not** render the tag, call `$svc('notif')`, or change the current view.
 

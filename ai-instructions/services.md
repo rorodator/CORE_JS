@@ -114,7 +114,19 @@ document.addEventListener('core-router-component-load-error', (event) => {
 });
 ```
 
-Log payload mirrors `tag`, `url`, `route`, and technical `message`/`name` — no user-provided content.
+**Log (`$svc('log').error(payload)` — single structured object):**
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `event` | `string` | `core-router-component-load-error` |
+| `message` | `string` | Fixed summary (`Router component load failed`) |
+| `tag` | `string` | Custom element tag that failed to load |
+| `url` | `string` | Matched route URL (routing input; may contain path segments) |
+| `route` | `string\|null` | Route name or path from the route descriptor |
+| `errorName` | `string` | Technical error name |
+| `errorMessage` | `string` | Technical error message |
+
+Privacy contract: no request body or application payload is logged; route context (`tag`, matched `url`, `route`) and technical error fields are logged. Applications must not encode secrets in route URLs.
 
 ## Lang & i18n hooks
 

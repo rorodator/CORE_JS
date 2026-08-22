@@ -52,7 +52,7 @@ test('ensure success renders the route component', async () => {
 
     const logCalls = [];
     const core = globalThis.$core;
-    registerMockService(core, 'log', { error: (...args) => logCalls.push(args) });
+    registerMockService(core, 'log', { error: (payload) => logCalls.push(payload) });
     registerMockService(core, 'config', {
         getRelativePath: () => '/target',
         getRoute: (name) => (name === 'target' ? '/target' : '/stable'),
@@ -88,7 +88,7 @@ test('ensure rejection logs, emits one event, and keeps the current view', async
     const events = [];
     const core = globalThis.$core;
 
-    registerMockService(core, 'log', { error: (...args) => logCalls.push(args) });
+    registerMockService(core, 'log', { error: (payload) => logCalls.push(payload) });
     registerMockService(core, 'config', {
         getRelativePath: () => '/broken',
         getRoute: (routeName) => (routeName === 'broken' ? '/broken' : '/stable'),
@@ -126,13 +126,14 @@ test('ensure rejection logs, emits one event, and keeps the current view', async
     assert.equal(events[0].detail.error, loadError);
 
     assert.equal(logCalls.length, 1);
-    assert.equal(logCalls[0][0], 'Router component load failed');
-    assert.deepEqual(logCalls[0][1], {
+    assert.deepEqual(logCalls[0], {
+        event: Core_Router.COMPONENT_LOAD_ERROR_EVENT,
+        message: 'Router component load failed',
         tag: 'missing-page',
         url: '/broken',
         route: 'broken',
-        message: 'chunk missing',
-        name: 'Error',
+        errorName: 'Error',
+        errorMessage: 'chunk missing',
     });
 
     assert.equal(findChildTag(router, 'stable-page-b'), stableChild);
