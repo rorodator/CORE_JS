@@ -9,6 +9,19 @@ import {
 } from './support/ajax-mock.mjs';
 import { bootCore } from './support/platform-harness.mjs';
 
+/**
+ * @param {import('../services/core/core.js').Core} core
+ * @param {string} name
+ * @param {Record<string, Function>} impl
+ */
+function registerMockService(core, name, impl) {
+    core.registerService(name, class MockService {
+        constructor() {
+            Object.assign(this, impl);
+        }
+    });
+}
+
 beforeEach(() => {
     resetAjaxMock();
     bootCore();
@@ -172,6 +185,36 @@ test('transport errors dispatch core-ajax-transport-error', async () => {
     assert.equal(seen.length, 1);
     assert.equal(seen[0].kind, 'transport');
     assert.equal(seen[0].status, 500);
+});
+
+test('transport errors log a structured payload without response body', async () => {
+    const logCalls = [];
+    const core = globalThis.$core;
+    const SENSITIVE = 'SECRET_TOKEN_DO_NOT_LOG';
+
+    registerMockService(core, 'log', { error: (payload) => logCalls.push(payload) });
+
+    const ajax = new Core_AjaxService();
+
+    setAjaxBehavior(() => ({
+        status: 404,
+        statusText: 'Not Found',
+        response: { error: 'missing', token: SENSITIVE },
+    }));
+
+    await assert.rejects(() => firstValueFrom(ajax.get('/api/missing')));
+
+    assert.equal(logCalls.length, 1);
+    assert.deepEqual(logCalls[0], {
+        event: Core_AjaxService.TRANSPORT_ERROR_EVENT,
+        message: 'Ajax transport error',
+        kind: 'transport',
+        status: 404,
+        statusText: 'Not Found',
+        errorMessage: 'Not Found: The requested resource was not found',
+    });
+    assert.equal(logCalls[0].response, undefined);
+    assert.doesNotMatch(JSON.stringify(logCalls[0]), new RegExp(SENSITIVE));
 });
 
 test('onTransportError() hook receives normalized errors', async () => {
