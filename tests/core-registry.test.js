@@ -72,3 +72,21 @@ test('Core registry contract', async (t) => {
         assert.equal(again, core);
     });
 });
+
+test('registerAllServices() kernel contract', () => {
+    const core = bootCore();
+    const included = ['log', 'ajax', 'router', 'resource', 'config', 'default', 'lang', 'browser', 'dom'];
+    const excluded = ['cart', 'semantic', 'filterFactory', 'util', 'zip', 'notif'];
+
+    for (const name of included) {
+        assert.ok(core.getService(name), `kernel service [${name}] must be registered`);
+    }
+
+    for (const name of excluded) {
+        assert.throws(
+            () => core.getService(name),
+            (error) => error instanceof Error && new RegExp(`Core service not found : \\[${name}\\]`).test(error.message),
+            `legacy service [${name}] must not be registered`
+        );
+    }
+});

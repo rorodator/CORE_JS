@@ -32,14 +32,28 @@ Apps add **domain** services in their own repo (e.g. `$svc('user')`, `$svc('jour
 
 ## Ajax: transport vs application API
 
-**`Core_AjaxService`** (`services/api/core-ajax-service.js`) is the generic transport primitive:
+**`Core_AjaxService`** (`services/api/core-ajax-service.js`) is the generic HTTP transport primitive. It exposes only these request methods:
 
-- `$svc('ajax').callAPI('path/segment', params, 'GET'|'POST')` — path segment only; the app Ajax subclass resolves the full `/api/…` URL.
+- `$svc('ajax').get(url, headers?)`
+- `$svc('ajax').getJSON(url, body, headers?)` — POST with a JSON body (legacy method name)
+- `$svc('ajax').put(url, body, headers?)`
+- `$svc('ajax').patch(url, body, headers?)`
+- `$svc('ajax').delete(url, headers?)`
+
+Supporting hooks (also on `Core_AjaxService`):
+
+- `mapURL(url)` — identity by default; override to prefix a base URL
+- `getDefaultHeaders(method)` — override in the app Ajax subclass for CSRF, request id, etc.
+- `onTransportError(error)` / `core-ajax-transport-error` — transport UX hook
+
+Transport contract:
+
 - **2xx:** observable emits body; functional `status` stays in payload — handle in app code.
 - **Transport / HTTP failure:** observable **errors** with `{ kind: 'transport', status, statusText, message, response }`.
-- Override `getDefaultHeaders(method)` in the app Ajax subclass for CSRF, request id, etc.
 
-**Application Ajax** (e.g. MyJourney `AppAjaxService`) extends `Core_AjaxService`, registers as `$svc('ajax')`, and owns `/api/` prefixing, auth headers, and app-specific error UX. Components never call `$svc('ajax')` directly — they use owning domain services.
+**`callAPI()` is not a `Core_AjaxService` method.** An application subclass (e.g. MyJourney `AppAjaxService`) may add `callAPI(apiName, params, method)` and own `/api/` prefix resolution, auth headers, and app-specific error UX. Register that subclass as `$svc('ajax')`.
+
+Components never call `$svc('ajax')` — neither the transport methods above nor an application `callAPI`. They use owning domain services.
 
 ## Adding a platform service
 
@@ -88,17 +102,17 @@ The user/session service owns its endpoint, applies its central state, and norma
 
 ```javascript
 bootstrap() {
-    $svc('ajax').callAPI('bootstrap/context', {}, 'GET').subscribe();
+    $svc('ajax').get('/api/bootstrap/context').subscribe();
 }
 ```
 
 **Wrong — transport knowledge in a component:**
 
 ```javascript
-$svc('ajax').callAPI('small-steps/entries/create', {
+$svc('ajax').getJSON('/api/small-steps/entries/create', {
     small_step_id: stepId,
     confirm_same_date: true,
-}, 'POST');
+});
 ```
 
 **Wrong — a REST-shaped pass-through service:**
