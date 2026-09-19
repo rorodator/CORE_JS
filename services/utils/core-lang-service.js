@@ -83,7 +83,18 @@ export class Core_LangService {
          obj = document.body;
       }
 
+      /** @type {HTMLElement[]} */
+      const elements = [];
+
+      if (obj.matches?.('[data-core-lang]')) {
+         elements.push(/** @type {HTMLElement} */ (obj));
+      }
+
       obj.querySelectorAll('[data-core-lang]').forEach((elt) => {
+         elements.push(/** @type {HTMLElement} */ (elt));
+      });
+
+      elements.forEach((elt) => {
          this.#parseLangEntries(elt).forEach((info) => {
             this.processOneElement(elt, info);
          });
