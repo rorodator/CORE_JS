@@ -212,7 +212,10 @@ export class Core_LangService {
       }
 
       if (info.attribute) {
-         target.setAttribute(info.attribute, theValue);
+         const attrValue = String(theValue);
+         if (target.getAttribute(info.attribute) !== attrValue) {
+            target.setAttribute(info.attribute, attrValue);
+         }
       } else if (info.rich === true) {
          // Opt-in only: author-controlled markup in translation files — never user input.
          target.innerHTML = theValue;

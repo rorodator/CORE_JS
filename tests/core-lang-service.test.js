@@ -163,6 +163,50 @@ test('process(root) keeps attribute and plain text semantics', async () => {
     assert.equal(text.textContent, 'Nested label');
 });
 
+test('process(root) does not recurse when attribute translation matches observed host attribute', async () => {
+    const lang = await initLang();
+    const tag = 'test-lang-attr-host-f967';
+    let attributeChangedCount = 0;
+    if (!customElements.get(tag)) {
+        customElements.define(tag, class extends HTMLElement {
+            static get observedAttributes() {
+                return ['label'];
+            }
+
+            attributeChangedCallback() {
+                attributeChangedCount += 1;
+                this.render();
+            }
+
+            connectedCallback() {
+                this.render();
+            }
+
+            render() {
+                globalThis.$svc('lang').process(this);
+            }
+        });
+    }
+
+    const host = document.createElement(tag);
+    host.setAttribute(
+        'data-core-lang',
+        JSON.stringify({
+            container: 'global',
+            name: 'hostLabel',
+            attribute: 'label',
+        })
+    );
+    document.body.append(host);
+
+    assert.doesNotThrow(() => {
+        lang.process(host);
+        lang.process(host);
+    });
+    assert.equal(host.getAttribute('label'), 'Host label');
+    assert.equal(attributeChangedCount, 1);
+});
+
 test('process(root) keeps rich translation semantics', async () => {
     const lang = await initLang();
     const rich = document.createElement('div');
