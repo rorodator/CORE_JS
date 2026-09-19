@@ -163,6 +163,50 @@ test('process(root) keeps attribute and plain text semantics', async () => {
     assert.equal(text.textContent, 'Nested label');
 });
 
+test('process(root) does not recurse when attribute targets an observed host attribute', async () => {
+    const lang = await initLang();
+
+    let renderCount = 0;
+
+    class TestLangHost extends HTMLElement {
+        static get observedAttributes() {
+            return ['label'];
+        }
+
+        attributeChangedCallback() {
+            this.render();
+        }
+
+        render() {
+            renderCount += 1;
+            lang.process(this);
+        }
+    }
+
+    customElements.define('test-lang-host-recursion', TestLangHost);
+
+    const host = document.createElement('test-lang-host-recursion');
+    host.setAttribute(
+        'data-core-lang',
+        JSON.stringify({
+            container: 'global',
+            name: 'hostLabel',
+            attribute: 'label',
+        })
+    );
+    document.body.append(host);
+
+    lang.process(host);
+
+    assert.equal(host.getAttribute('label'), 'Host label');
+    assert.equal(renderCount, 1, 'attributeChangedCallback must not loop on redundant setAttribute');
+
+    lang.process(host);
+    lang.process(host);
+    assert.equal(renderCount, 1, 'repeated process(root) must stay safe');
+    assert.equal(host.getAttribute('label'), 'Host label');
+});
+
 test('process(root) keeps rich translation semantics', async () => {
     const lang = await initLang();
     const rich = document.createElement('div');
