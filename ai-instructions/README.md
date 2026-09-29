@@ -99,6 +99,7 @@ Relative links that include a query string (for example `/page?q=filter`) use th
 - The query string is **not** part of route regex matching: `/page`, `/page?q=a`, and `/page?q=b` resolve the same route.
 - When the pathname match is unchanged but the query changes (`goTo`, link click, or `popstate`), `Core_Router` keeps the **same component instance** (no detach, no second `components.ensure()` for lazy tags) and dispatches **`routeChanged` once** on `document`.
 - When pathname and query are both unchanged, the router is a no-op (no remount, no event).
+- Lazy `components.ensure()` commits are ordered. A slower load for an older pathname is discarded when a newer navigation (another pathname, or a query-only change) has already started, so Back/Forward cannot be overwritten by a late commit.
 - Apps should listen for `routeChanged` and re-read `window.location.search` (or other URL state). They do **not** need a separate `popstate` listener for query synchronization on the main router.
 - `routeChanged.detail.url` remains the matched **pathname** segment; `routeChanged.detail.search` is an optional additive field on navigations where the query changed (same pathname).
 
