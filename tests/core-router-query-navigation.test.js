@@ -314,3 +314,77 @@ test('base path app resolves query-only navigation on stripped pathname', async 
     assert.equal(routeEvents[0].detail.url, '/explore');
     assert.equal(routeEvents[0].detail.search, '?q=trail');
 });
+
+test('a slower lazy commit cannot overwrite a newer history entry', async () => {
+    class ExplorePage extends HTMLElement {}
+    class JourneyPage extends HTMLElement {}
+    class ProfilePage extends HTMLElement {}
+    defineElement('explore-page-stale', ExplorePage);
+    defineElement('journey-page-stale', JourneyPage);
+    defineElement('profile-page-stale', ProfilePage);
+
+    /** @type {(() => void)|null} */
+    let releaseJourney = null;
+    const journeyGate = new Promise((resolve) => {
+        releaseJourney = resolve;
+    });
+    registerMockComponents({
+        ensure: async (tag) => {
+            if (tag === 'journey-page-stale') {
+                await journeyGate;
+            }
+        },
+    });
+
+    configureRoutes({
+        explore: '/explore',
+        journey: '/journey/([A-Z0-9]+)',
+        profile: '/people/([A-Z0-9]+)',
+    });
+
+    const router = new Core_Router();
+    registerTagRoutes(router, {
+        explore: { tagName: 'explore-page-stale', isDefault: true },
+        journey: { tagName: 'journey-page-stale' },
+        profile: { tagName: 'profile-page-stale' },
+    });
+
+    globalThis.location.href = 'http://localhost/explore?q=aquarelle';
+    await seedRouter(router);
+    assert.ok(findChildTag(router, 'explore-page-stale'));
+
+    const routerSvc = new Core_RouterService();
+    routerSvc.router = router;
+
+    Core_RouterService.pushState('/journey/JOURNEY1');
+    Core_RouterService.pushState('/people/PERSON1');
+    await flushPromises();
+
+    assert.equal(window.location.pathname, '/people/PERSON1');
+    assert.ok(findChildTag(router, 'profile-page-stale'));
+    assert.equal(findChildTag(router, 'journey-page-stale'), null);
+
+    releaseJourney();
+    await flushPromises();
+    await flushPromises();
+
+    assert.equal(window.location.pathname, '/people/PERSON1');
+    assert.ok(findChildTag(router, 'profile-page-stale'));
+    assert.equal(findChildTag(router, 'journey-page-stale'), null);
+
+    globalThis.location.href = 'http://localhost/journey/JOURNEY1';
+    Core_RouterService.forceRoute();
+    await journeyGate;
+    await flushPromises();
+    assert.equal(window.location.pathname, '/journey/JOURNEY1');
+    assert.ok(findChildTag(router, 'journey-page-stale'));
+    assert.equal(findChildTag(router, 'profile-page-stale'), null);
+
+    globalThis.location.href = 'http://localhost/explore?q=aquarelle';
+    Core_RouterService.forceRoute();
+    await flushPromises();
+    assert.equal(window.location.pathname, '/explore');
+    assert.equal(window.location.search, '?q=aquarelle');
+    assert.ok(findChildTag(router, 'explore-page-stale'));
+    assert.equal(findChildTag(router, 'journey-page-stale'), null);
+});
