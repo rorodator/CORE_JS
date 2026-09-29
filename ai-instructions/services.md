@@ -125,8 +125,9 @@ Application services do not own rendering, HBS, DOM queries, focus, modals, spin
 
 ## Router & config
 
-- `$svc('router').goTo(url)` — link interception rules in `Core_RouterService` (modifier-clicks, `target="_blank"`, external URLs ignored).
+- `$svc('router').goTo(url)` — link interception rules in `Core_RouterService` (modifier-clicks, `target="_blank"`, external URLs ignored). Internal links may include query strings; plain left-click uses SPA navigation.
 - `$svc('config').getRoute('name')`, `getBaseUrl()` — base URL normalized via `Core_ConfigService.normalizeBaseUrl()`.
+- **Route vs query:** pathname identifies the route; query-only changes on the same pathname keep the current route component and emit one `routeChanged` (see [README.md](./README.md#route-matching-vs-query-only-navigation)). `Core_RouterService` `popstate` already re-routes the main router — apps should not add their own `popstate` only to sync query state.
 - **Lazy route components:** `Core_Router` calls `$svc('components').ensure(tag)` before rendering a `tagName` route. On failure it logs via `$svc('log').error(...)` and dispatches `core-router-component-load-error` on `document` — it does **not** call `$svc('notif')` or render the element. The current view stays unchanged. Apps (or CORE_UX) may listen for the event to show toast, modal, error state, etc.
 
 ### `core-router-component-load-error`

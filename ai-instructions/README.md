@@ -90,6 +90,18 @@ Apps opt in individually in their Core subclass — see [services.md](./services
 - `target="_blank"` / `_new`, `download`, `data-core-ignore-router`
 - in-page `#` anchors, `mailto:`, `tel:`, other special protocols, `//`, `http(s)://`
 
+Relative links that include a query string (for example `/page?q=filter`) use the same SPA navigation path as pathname-only links when plain left-clicked.
+
+## Route matching vs query-only navigation
+
+- **Route identity** is the pathname matched by the registered route pattern (`Core_ConfigService.getRelativePath()` — pathname only, no query).
+- **Navigation state** inside a route can include the query string (`window.location.search`).
+- The query string is **not** part of route regex matching: `/page`, `/page?q=a`, and `/page?q=b` resolve the same route.
+- When the pathname match is unchanged but the query changes (`goTo`, link click, or `popstate`), `Core_Router` keeps the **same component instance** (no detach, no second `components.ensure()` for lazy tags) and dispatches **`routeChanged` once** on `document`.
+- When pathname and query are both unchanged, the router is a no-op (no remount, no event).
+- Apps should listen for `routeChanged` and re-read `window.location.search` (or other URL state). They do **not** need a separate `popstate` listener for query synchronization on the main router.
+- `routeChanged.detail.url` remains the matched **pathname** segment; `routeChanged.detail.search` is an optional additive field on navigations where the query changed (same pathname).
+
 ## Lazy route component load failures
 
 When a route uses `tagName` and `$svc('components').ensure(tag)` is available, `Core_Router` loads the module **before** mutating the DOM. On rejection:

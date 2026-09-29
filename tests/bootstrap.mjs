@@ -17,15 +17,37 @@ globalThis.Event = linkedWindow.Event;
 
 let locationHref = 'http://localhost/';
 
+function resolveLocationHref(value) {
+    const raw = String(value);
+    if (raw.startsWith('http://') || raw.startsWith('https://')) {
+        return raw;
+    }
+    const path = raw.startsWith('/') ? raw : `/${raw}`;
+    return `http://localhost${path}`;
+}
+
+const locationObject = {
+    get href() {
+        return locationHref;
+    },
+    set href(value) {
+        locationHref = resolveLocationHref(value);
+    },
+    get pathname() {
+        return new URL(locationHref).pathname;
+    },
+    get search() {
+        return new URL(locationHref).search;
+    },
+};
+
 const locationDescriptor = {
     configurable: true,
     get() {
-        const href = locationHref;
-        const pathname = href.startsWith('http') ? new URL(href).pathname : href;
-        return { href, pathname };
+        return locationObject;
     },
     set(value) {
-        locationHref = String(value);
+        locationObject.href = value;
     },
 };
 
@@ -38,5 +60,6 @@ globalThis.__historyCalls = [];
 globalThis.history = {
     pushState(state, title, url) {
         globalThis.__historyCalls.push({ state, title, url });
+        locationHref = resolveLocationHref(url);
     },
 };

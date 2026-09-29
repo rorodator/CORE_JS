@@ -185,7 +185,7 @@ test('goTo() falls back to window.location without router', () => {
 
     routerSvc.goTo('/external');
 
-    assert.equal(globalThis.location.href, '/external');
+    assert.equal(globalThis.location.pathname, '/external');
 });
 
 test('unregistering router removes listeners', () => {

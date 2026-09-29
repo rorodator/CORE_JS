@@ -30,6 +30,11 @@ Shared primitives for all CORE apps. Details: `ai-instructions/services.md`, `ai
 
 - Relative imports between CORE_JS modules **must include `.js` extension**.
 
+## Router (query on same pathname)
+
+- Match routes on pathname only (`getRelativePath()`); query changes on the same route must not remount the component.
+- Emit `routeChanged` once per recognized query-only navigation; optional `detail.search` is additive — `detail.url` stays the pathname match.
+
 ## DOM / subscriptions
 
 - User/API strings: `textContent` / `createElement({ text })`. `trustedHtml` for author-controlled markup only.
