@@ -29,7 +29,7 @@ Put code here when it is a **generic primitive** with **no app domain** and **no
 
 - Base classes (`Core_HTMLElement`, `Core_HBSElement`, …)
 - Platform services (`ajax`, `lang`, `router`, …) when registered via `$svc()`
-- Utilities (`dom.js`, subscription manager, …)
+- Utilities (`dom.js`, subscription manager, `readonlyObservable()`, …)
 - Shared algorithms/helpers with no knowledge of app routes, entities, or `<core-*>` tags
 
 Do **not** put here:

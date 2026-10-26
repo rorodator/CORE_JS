@@ -38,7 +38,8 @@ Shared primitives for all CORE apps. Details: `ai-instructions/services.md`, `ai
 ## DOM / subscriptions
 
 - User/API strings: `textContent` / `createElement({ text })`. `trustedHtml` for author-controlled markup only.
-- `addSub()` for persistent subscriptions (BehaviorSubject), not one-shot application operations.
+- `addSub()` for subscriptions the element owns and may cancel on teardown; never for a mutation whose outcome must survive the element — see `core-js-components.mdc`.
+- Component business outcomes: private Subject → `readonlyObservable()` (`lib/utils/core-readonly-observable.js`) — no business `CustomEvent`, event bus, or `document` listeners.
 
 ## Before adding code here
 
