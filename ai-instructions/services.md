@@ -88,6 +88,8 @@ $svc('smallSteps').addEntry(stepId, observation, { confirmSameDate });
 
 The owning app service translates that command to its endpoint, method, `small_step_id`, `confirm_same_date`, and application outcomes. It may preserve the lower-level Observable when that matches the app async model.
 
+A mutation Observable emits the confirmed outcome, then completes. Components emit their own success output only from that confirmed outcome, and must not cancel a mutation whose result must survive them — see the communication contract in [components.md](./components.md#component-communication-contract).
+
 **Good bootstrap orchestration:**
 
 ```javascript

@@ -41,7 +41,7 @@ dom.createElement('button', { text: 'Save', attrs: { type: 'button' } });
 
 ## Structure
 
-- `lib/` — Classes de base (`Core_HTMLElement`, `Core_HBSElement`), router, utilitaires (`dom.js`, subscription manager)
+- `lib/` — Classes de base (`Core_HTMLElement`, `Core_HBSElement`), router, utilitaires (`dom.js`, subscription manager, `readonlyObservable()`)
 - `services/` — Services plateforme (`log`, `ajax`, `router`, `lang`, `dom`, …)
 - `templates/` — Helpers Handlebars partagés
 - `styles/` — CSS utilitaires génériques (`globals.css`)

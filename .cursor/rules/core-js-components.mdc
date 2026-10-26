@@ -1,5 +1,5 @@
 ---
-description: Core_HTMLElement / Core_HBSElement lifecycle, bindings, subscriptions, i18n hooks
+description: Core_HTMLElement / Core_HBSElement lifecycle, bindings, subscriptions, component communication, i18n hooks
 globs: **/*.js
 alwaysApply: false
 ---
@@ -18,22 +18,43 @@ Base classes: `lib/base/core-html-element.js`, `lib/base/core-hbs-element.js`. D
 
 ## Event binding
 
-- **`bindDelegated(type, selector, handler)`** — default for clicks, changes, bubbling custom events on descendants.
+- **`bindDelegated(type, selector, handler)`** — default for clicks, changes, technical/kit UI events on descendants.
 - **`bindUI(type, handler)`** — host-level listeners (keyboard shortcuts).
 - Prefer `data-*` hooks + `bindDelegated` — never `querySelector(...).addEventListener` in `ui_toFunctional`.
 - Listeners are aborted each `render()` — bindings are per render cycle.
+- DOM events are for technical and UI-kit signals only — business outcomes use the communication contract below.
+
+## Component communication (child → parent)
+
+1. Child owns **private** Subjects (`#saved = new Subject()`).
+2. Child exposes **public readonly** Observables via getters backed by `readonlyObservable(this.#saved)` (`lib/utils/core-readonly-observable.js`). Never expose a Subject; never `asObservable()` for public outputs (`source` leaks the Subject).
+3. Parent explicitly obtains/owns the child instance.
+4. Parent explicitly subscribes to the outputs it chose: `this.addSub(child.saved$.subscribe(...))`.
+5. Child never knows its consumers.
+6. **No business `CustomEvent`** (bubbling or not).
+7. **No global business event bus.**
+8. **No business listeners on `document` / `window`.**
+9. Parent may explicitly re-emit on its own private Subject → readonly Observable.
+10. Subscriptions are cleaned by their owner lifecycle; a parent replacing a child unsubscribes from the old one.
+11. Emit success only after the owning service confirmed the mutation.
+12. Success `next()` precedes `complete()`.
+
+- **Instance outputs** (`saved$`): never `complete()` / `error()` them (a stopped Subject drops later values), not even on disconnect — elements can reconnect.
+- **Session outputs**: the method starting a bounded interaction returns a fresh readonly Observable on a new Subject; a new session completes the previous one without a value. Workflow/session orchestration (e.g. modal flows) belongs to the consuming app.
+- Still valid: technical DOM events, generic UI-kit events, documented platform signals on `document` (`routeChanged`, `core-ajax-transport-error`, `core-router-component-load-error`).
 
 ## Subscriptions
 
-- **`addSub(observable.subscribe(...))`** — long-lived streams (lang, user context, …).
-- **Do not** wrap one-shot application operations in `addSub()`.
+- **`addSub(sub)`** — owned by the element: unsubscribed on disconnect (outside reuse mode) and `forceDestroy()`, kept through `detach()`/`attach()`, released as soon as it closes on its own. Cleanup is idempotent. No GC fallback.
+- Decide by **ownership and cancellation**, not "one-shot vs long-lived": `addSub()` when cancelling on teardown is correct (live streams, child outputs, reads that only update this element).
+- **Never** tie a mutation whose confirmed outcome must survive the element to its teardown — unsubscribing may abort the request and silently lose the result. Let it settle (plain `.subscribe()`), keep the UI busy, or let a longer-lived owner hold it.
 
 ## Functional boundaries
 
 - Component boundaries should reflect **functional responsibilities**, not only visual sections or file-size targets.
 - A component owns one coherent behavior/state boundary; parents compose children and coordinate only page-level concerns.
 - Extract an autonomous list, editor, picker, timeline, or interaction flow when it has its own state and actions. Do not keep it inside a page until the page becomes a second implementation of that feature.
-- Prefer one canonical component over duplicated functional behavior. Share data through explicit properties/methods and report changes through bubbling custom events.
+- Prefer one canonical component over duplicated functional behavior. Share data through explicit properties/methods and report outcomes through public readonly Observables.
 - Avoid both extremes: do not create components for inert markup fragments, and do not keep unrelated workflows in a giant component merely because no duplication exists yet.
 - Do not introduce a service only to reduce component size; services require an owned application capability, IO boundary, central behavior, or genuinely shared state/orchestration. See `core-js-io-boundaries.mdc`.
 
@@ -44,9 +65,9 @@ Base classes: `lib/base/core-html-element.js`, `lib/base/core-hbs-element.js`. D
 - Forbidden: `closest('specific-parent')`, parent-owned selector queries, passing parent
   `HTMLElement` references into children mainly to restore focus on parent controls.
 - Allowed parent → child: properties/setters, declared public methods, command events.
-- Preferred child → outside: semantic bubbling `CustomEvent`s with light business
-  context only — not DOM references in `detail`.
-- Parent-owned focus restoration stays in the parent after child composer close events.
+- Child → outside: public readonly Observables with light business context only — no DOM
+  references in emitted values.
+- Parent-owned focus restoration stays in the parent, after the child's close/result output emits.
 
 ## Handlebars (`Core_HBSElement`)
 
