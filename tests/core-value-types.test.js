@@ -3,7 +3,14 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
-import { compareDecimal, formatDecimal, parseDecimal, parseInteger } from '../lib/value/core-decimal.js';
+import {
+    compareDecimal,
+    formatDecimal,
+    parseCanonicalNumber,
+    parseDecimal,
+    parseInteger,
+    parseLocalizedNumber
+} from '../lib/value/core-decimal.js';
 import {
     compareDateTime,
     formatDate,
@@ -143,6 +150,36 @@ test('dates, times, and datetimes stay strict', () => {
     }), '02 Nov 2026 14:35:08 +02:00');
     assert.equal(compareDateTime('2026-11-02T14:35:08+02:00', '2026-11-02T12:35:08Z'), 0);
     assert.equal(compareDateTime('2026-11-02T14:35:08', '2026-11-02T14:35:08Z'), null);
+
+    const badOffset = parseDateTime('2026-11-02T14:35:08+99:99', { temporal: 'offset' });
+    assert.equal(badOffset.status, 'invalid');
+    assert.equal(badOffset.value, null);
+    assert.equal(parseDateTime('2026-11-02T14:35:08+24:00', { temporal: 'offset' }).status, 'invalid');
+    assert.equal(parseDateTime('2026-11-02T14:35:08+00:60', { temporal: 'offset' }).status, 'invalid');
+    assert.equal(parseDateTime('2026-11-02T14:35:08-99:99', { temporal: 'offset' }).status, 'invalid');
+    assert.equal(parseDateTime('2026-11-02T14:35:08+23:59', { temporal: 'offset' }).value, '2026-11-02T14:35:08+23:59');
+    assert.equal(compareDateTime('2026-11-02T14:35:08+99:99', '2026-11-02T12:35:08Z'), null);
+});
+
+test('canonical numbers and localized numbers stay distinct when grouping uses a dot', () => {
+    const dot = { decimalSeparator: ',', groupSeparator: '.' };
+    assert.equal(parseLocalizedNumber('1.234', dot).value, '1234');
+    assert.equal(parseInteger('1.234', dot).value, '1234');
+    assert.equal(parseCanonicalNumber('1.234').value, '1.234');
+    assert.equal(parseDecimal('1.234', { source: 'canonical', ...dot }).value, '1.234');
+    assert.equal(parseDecimal('1.234', { locale: 'fr' }).value, '1.234');
+    assert.equal(parseCanonicalNumber('1.234', { locale: 'fr' }).value, '1.234');
+
+    const samples = ['0', '1234', '1234.5', '1234567.89', '1.10'];
+    const formats = [{ locale: 'en' }, { locale: 'fr' }, dot];
+    for (const canonical of samples) {
+        for (const options of formats) {
+            const shown = formatDecimal(canonical, options);
+            const parsed = parseLocalizedNumber(shown, options);
+            assert.equal(parsed.status, 'valid', shown);
+            assert.equal(parsed.value, canonical, `${shown} -> ${parsed.value}`);
+        }
+    }
 });
 
 test('relativeDate stays symbolic', () => {
