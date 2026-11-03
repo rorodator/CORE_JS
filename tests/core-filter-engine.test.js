@@ -678,3 +678,79 @@ test('repeated edits in one transaction collapse to the net change', () => {
    assert.equal(seen.events.length, 1);
    engine.destroy();
 });
+
+test('replacing a definition callback is a catalog change and an identical update is not', () => {
+   const allow = () => null;
+   const reject = () => [{ code: 'E_CUSTOM', message: 'Rejected.' }];
+   const providerA = () => [{ value: 'EUR', label: 'Euro' }];
+   const providerB = () => [{ value: 'USD', label: 'US Dollar' }];
+   const parseA = (value) => ({ status: 'valid', value, errors: [] });
+   const parseB = () => ({ status: 'invalid', value: null, errors: [{ code: 'E_CUSTOM', message: 'Unparsed.' }] });
+   const compareA = () => 0;
+   const compareB = () => null;
+   const engine = new Core_FilterEngine({
+      definitions: [
+         { id: 'amount', type: 'decimal', validate: allow, compare: compareA },
+         { id: 'currency', type: 'select', options: providerA },
+         { id: 'code', type: 'string', parse: parseA }
+      ]
+   });
+   const seen = watch(engine);
+   const quiet = engine.getState().revision;
+   engine.updateDefinition('amount', { validate: allow, compare: compareA });
+   assert.equal(engine.getState().revision, quiet);
+   assert.equal(seen.events.length, 0);
+
+   engine.updateDefinition('amount', { validate: reject });
+   const replaced = seen.events.at(-1);
+   assert.equal(replaced.type, 'catalogChanged');
+   assert.equal(replaced.definitionId, 'amount');
+   assert.equal(engine.getState().revision, quiet + 1);
+   assert.equal(engine.getState().filters.length, 0);
+   assert.equal(engine.getDefinitions().find((item) => item.id === 'amount').validate, reject);
+   assert.equal(engine.getDefinitions().find((item) => item.id === 'amount').compare, compareA);
+   const exported = JSON.parse(JSON.stringify(engine.exportState()));
+   assert.equal(exported.schemaVersion, 1);
+   assert.deepEqual(exported.definitions, []);
+
+   engine.updateDefinition('amount', { validate: allow });
+   const amount = engine.addFilter('amount', { value: '10' });
+   assert.equal(engine.getState().filters.find((item) => item.instanceId === amount).status, 'valid');
+   engine.updateDefinition('amount', { validate: reject });
+   assert.equal(engine.getState().filters.find((item) => item.instanceId === amount).status, 'invalid');
+   assert.equal(engine.getCriteria().criteria, null);
+   const revalidated = seen.events.filter((event) => event.revision === engine.getState().revision);
+   assert.deepEqual(revalidated.map((event) => event.type), ['catalogChanged', 'validationChanged']);
+   assert.equal(revalidated[0].transactionId, revalidated[1].transactionId);
+   assert.equal(revalidated[0].state, revalidated[1].state);
+   assert.equal(revalidated[1].instanceId, amount);
+
+   const beforeProvider = engine.getState().revision;
+   engine.updateDefinition('currency', { options: providerB });
+   assert.equal(engine.getState().revision, beforeProvider + 1);
+   assert.equal(seen.events.at(-1).type, 'catalogChanged');
+   assert.equal(seen.events.at(-1).definitionId, 'currency');
+   assert.equal(engine.getDefinitions().find((item) => item.id === 'currency').provider, providerB);
+
+   const code = engine.addFilter('code', { value: 'ABC' });
+   assert.equal(engine.getState().filters.find((item) => item.instanceId === code).status, 'valid');
+   engine.updateDefinition('code', { parse: parseB });
+   assert.equal(engine.getState().filters.find((item) => item.instanceId === code).status, 'invalid');
+   assert.equal(engine.getDefinitions().find((item) => item.id === 'code').parse, parseB);
+   const parsed = seen.events.filter((event) => event.revision === engine.getState().revision);
+   assert.deepEqual(parsed.map((event) => event.type), ['catalogChanged', 'validationChanged']);
+
+   const beforeCompare = engine.getState().revision;
+   const eventCount = seen.events.length;
+   engine.updateDefinition('amount', { compare: compareB });
+   assert.equal(engine.getState().revision, beforeCompare + 1);
+   assert.equal(seen.events.at(-1).type, 'catalogChanged');
+   assert.equal(engine.getDefinitions().find((item) => item.id === 'amount').compare, compareB);
+   engine.updateDefinition('amount', { validate: reject, compare: compareB });
+   engine.updateDefinition('currency', { options: providerB });
+   engine.updateDefinition('code', { parse: parseB });
+   assert.equal(engine.getState().revision, beforeCompare + 1);
+   assert.equal(seen.events.length, eventCount + 1);
+   assert.equal(JSON.parse(JSON.stringify(engine.exportState())).schemaVersion, 1);
+   engine.destroy();
+});

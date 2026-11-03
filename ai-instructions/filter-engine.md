@@ -69,7 +69,7 @@ No event is emitted for a no-op, for construction, or for `initialFilters`. A tr
 
 ## Snapshot v1
 
-`exportState()` returns a copy. `JSON.stringify` succeeds. Inline functions from the initial config are not written. A runtime definition must use registry refs (`providerRef`, `editorRef`, `parseRef`, `formatRef`, `validateRef`, `compareRef`) or `addDefinition` throws `Core_FilterError` `E_UNRESOLVED_REFERENCE`.
+`exportState()` returns a copy. `JSON.stringify` succeeds. Inline functions from the initial config are not written. Replacing `validate`, `parse`, `compare`, `provider`, or the formatter still emits `catalogChanged`, because change detection compares those function identities as well as the serializable fields. A runtime definition must use registry refs (`providerRef`, `editorRef`, `parseRef`, `formatRef`, `validateRef`, `compareRef`) or `addDefinition` throws `Core_FilterError` `E_UNRESOLVED_REFERENCE`.
 
 ```json
 {
