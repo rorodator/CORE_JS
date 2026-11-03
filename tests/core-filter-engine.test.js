@@ -373,6 +373,186 @@ test('validate reveals untouched errors and relativeDate stays symbolic', () => 
    engine.destroy();
 });
 
+test('moveFilter reorders inside a pin group, including the ends and a no-op', () => {
+   const engine = new Core_FilterEngine({
+      definitions: [{ id: 'name', type: 'string', allowMultipleInstances: true }],
+      initialFilters: [
+         { instanceId: 'p0', definitionId: 'name', pinned: true, value: 'a' },
+         { instanceId: 'p1', definitionId: 'name', pinned: true, value: 'b' },
+         { instanceId: 'p2', definitionId: 'name', pinned: true, value: 'c' },
+         { instanceId: 'u0', definitionId: 'name', value: 'd' },
+         { instanceId: 'u1', definitionId: 'name', value: 'e' }
+      ]
+   });
+   const order = () => engine.getState().filters.map((item) => item.instanceId);
+   assert.deepEqual(order(), ['p0', 'p1', 'p2', 'u0', 'u1']);
+   engine.moveFilter('p0', 2);
+   assert.deepEqual(order(), ['p1', 'p2', 'p0', 'u0', 'u1']);
+   engine.moveFilter('p0', 0);
+   assert.deepEqual(order(), ['p0', 'p1', 'p2', 'u0', 'u1']);
+   engine.moveFilter('u1', 3);
+   assert.deepEqual(order(), ['p0', 'p1', 'p2', 'u1', 'u0']);
+   engine.moveFilter('u1', 4);
+   assert.deepEqual(order(), ['p0', 'p1', 'p2', 'u0', 'u1']);
+   const seen = watch(engine);
+   const revision = engine.getState().revision;
+   engine.moveFilter('p2', 2);
+   engine.moveFilter('u0', 3);
+   assert.equal(engine.getState().revision, revision);
+   assert.equal(seen.events.length, 0);
+   assert.throws(() => engine.moveFilter('u0', 0), (error) => error.code === 'E_INCOMPATIBLE_UPDATE');
+   assert.deepEqual(order(), ['p0', 'p1', 'p2', 'u0', 'u1']);
+   engine.destroy();
+});
+
+test('select in and notIn accept canonical arrays', () => {
+   const engine = new Core_FilterEngine({
+      definitions: [{ id: 'currency', type: 'select', options: ['EUR', 'USD', 'GBP'] }]
+   });
+   const id = engine.addFilter('currency', { operator: 'in', value: ['EUR', 'USD'] });
+   const filter = engine.getState().filters[0];
+   assert.equal(filter.status, 'valid');
+   assert.deepEqual(filter.value, ['EUR', 'USD']);
+   assert.deepEqual(engine.getCriteria().criteria[0].value, ['EUR', 'USD']);
+   engine.setOperator(id, 'notIn');
+   assert.deepEqual(engine.getState().filters[0].value, ['EUR', 'USD']);
+   engine.setValue(id, ['GBP']);
+   assert.deepEqual(engine.getState().filters[0].value, ['GBP']);
+   assert.throws(() => engine.setValue(id, ['EUR', 1]), (error) => error.code === 'E_INVALID_SHAPE');
+   assert.deepEqual(engine.getState().filters[0].value, ['GBP']);
+   assert.throws(() => engine.setValue(id, 'EUR'), (error) => error.code === 'E_INVALID_SHAPE');
+   engine.destroy();
+});
+
+test('setFilters and importState do not accept a forged valid status', () => {
+   const engine = new Core_FilterEngine({
+      definitions: [{ id: 'amount', type: 'decimal' }]
+   });
+   engine.setFilters([{
+      instanceId: 'amount-1',
+      definitionId: 'amount',
+      operator: 'eq',
+      value: 'abc',
+      status: 'valid'
+   }]);
+   assert.equal(engine.getState().filters[0].status, 'invalid');
+   assert.equal(engine.getState().filters[0].value, null);
+   assert.equal(engine.getCriteria().criteria, null);
+   const snapshot = JSON.parse(JSON.stringify(engine.exportState()));
+   snapshot.filters[0].status = 'valid';
+   snapshot.filters[0].value = 'abc';
+   const restored = new Core_FilterEngine({
+      definitions: [{ id: 'amount', type: 'decimal' }]
+   });
+   restored.importState(JSON.parse(JSON.stringify(snapshot)));
+   assert.equal(restored.getState().filters[0].status, 'invalid');
+   assert.equal(restored.getCriteria().criteria, null);
+   restored.setFilters([{
+      instanceId: 'amount-1',
+      definitionId: 'amount',
+      value: '15',
+      status: 'invalid'
+   }]);
+   assert.equal(restored.getState().filters[0].status, 'valid');
+   assert.equal(restored.getState().filters[0].value, '15');
+   engine.destroy();
+   restored.destroy();
+});
+
+test('a transaction can remove and recreate the same instance id', () => {
+   const engine = new Core_FilterEngine({
+      definitions: [{ id: 'amount', type: 'decimal' }],
+      initialFilters: [{ instanceId: 'amount-min', definitionId: 'amount', value: '10' }]
+   });
+   const seen = watch(engine);
+   engine.transaction((tx) => {
+      tx.removeFilter('amount-min');
+      tx.addFilter('amount', { instanceId: 'amount-min', operator: 'gt', value: '99' });
+   });
+   const batch = seen.events.filter((event) => event.revision === engine.getState().revision);
+   assert.deepEqual(batch.map((event) => event.type), ['filterRemoved', 'filterAdded']);
+   assert.equal(batch[0].previous.value, '10');
+   assert.equal(batch[0].current, null);
+   assert.equal(batch[1].previous, null);
+   assert.equal(batch[1].current.value, '99');
+   assert.equal(batch[1].current.operator, 'gt');
+   assert.equal(batch[0].transactionId, batch[1].transactionId);
+   assert.equal(batch[0].state, batch[1].state);
+   assert.equal(engine.getState().filters[0].value, '99');
+   engine.destroy();
+});
+
+test('withSource marks CORE_UX commands as user without a new method argument', () => {
+   const engine = new Core_FilterEngine({
+      definitions: [{ id: 'amount', type: 'decimal', allowMultipleInstances: true }]
+   });
+   const seen = watch(engine);
+   const id = engine.withSource('user', () => engine.addFilter('amount', { value: '1' }));
+   assert.equal(seen.events.at(-1).source, 'user');
+   engine.withSource('user', () => {
+      engine.transaction((tx) => {
+         tx.setValue(id, '2');
+         tx.setPinned(id, true);
+      });
+   });
+   const batch = seen.events.filter((event) => event.revision === engine.getState().revision);
+   assert.deepEqual(batch.map((event) => event.source), ['user', 'user']);
+   assert.equal(new Set(batch.map((event) => event.transactionId)).size, 1);
+   engine.setValue(id, '3');
+   assert.equal(seen.events.at(-1).source, 'api');
+   engine.destroy();
+});
+
+test('subscriber re-entry stays ordered and nested snapshots are frozen', () => {
+   const engine = new Core_FilterEngine({
+      definitions: [
+         { id: 'amount', type: 'decimal' },
+         { id: 'currency', type: 'select', options: ['EUR', 'USD'] }
+      ]
+   });
+   const amount = engine.addFilter('amount', { operator: 'between', value: { min: '1', max: '5' } });
+   const currency = engine.addFilter('currency', { operator: 'in', value: ['EUR'] });
+   /** @type {string[]} */
+   const trace = [];
+   let armed = false;
+   let reentered = false;
+   engine.state$.subscribe((state) => {
+      const live = engine.getState();
+      assert.equal(live.revision, state.revision);
+      assert.deepEqual(live.filters.map((item) => item.value), state.filters.map((item) => item.value));
+      trace.push(`state:${state.revision}`);
+      if (armed && !reentered) {
+         reentered = true;
+         engine.setValue(amount, { min: '2', max: '6' });
+      }
+   });
+   engine.events$.subscribe((event) => {
+      assert.equal(event.revision, event.state.revision);
+      assert.equal(event.transactionId.startsWith('tx-'), true);
+      trace.push(`event:${event.revision}:${event.transactionId}`);
+   });
+   armed = true;
+   const before = trace.length;
+   engine.setValue(amount, { min: '3', max: '7' });
+   const tail = trace.slice(before);
+   assert.deepEqual(tail.map((item) => item.split(':')[0]), ['state', 'event', 'state', 'event']);
+   assert.equal(tail[0].split(':')[1], tail[1].split(':')[1]);
+   assert.equal(tail[2].split(':')[1], tail[3].split(':')[1]);
+   assert.notEqual(tail[1].split(':')[2], tail[3].split(':')[2]);
+   assert.deepEqual(engine.getState().filters[0].value, { min: '2', max: '6' });
+   const state = engine.getState();
+   assert.throws(() => { state.filters[0].value.min = '9'; }, TypeError);
+   assert.throws(() => { state.filters.push({}); }, TypeError);
+   const exported = engine.exportState();
+   assert.throws(() => { exported.filters[0].value.max = '9'; }, TypeError);
+   assert.equal(JSON.parse(JSON.stringify(exported)).filters[0].value.min, '2');
+   const criteria = engine.getCriteria();
+   assert.throws(() => { criteria.criteria[1].value.push('USD'); }, TypeError);
+   assert.deepEqual(engine.getCriteria().criteria.find((item) => item.instanceId === currency).value, ['EUR']);
+   assert.throws(() => { engine.getDefinitions()[1].operators.push('nope'); }, TypeError);
+   engine.destroy();
+});
+
 test('repeated edits in one transaction collapse to the net change', () => {
    const engine = new Core_FilterEngine({
       definitions: [{ id: 'amount', type: 'decimal' }],

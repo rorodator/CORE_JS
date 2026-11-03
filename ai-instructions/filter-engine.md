@@ -17,6 +17,12 @@ It is not a `$svc` service and it is not registered by `Core.registerAllServices
 
 Value parsing reuses `lib/value/`. `setValue` accepts a canonical value only. A localized draft goes through `applyEditorChange`, which keeps `rawValue` and `pending` / `invalid`.
 
+A list operator (`in`, `notIn`, and the other list operators) validates each canonical element. The array is not passed to a scalar parser.
+
+`setFilters` and `importState` revalidate values. A supplied `status: 'valid'` cannot hide a value that does not parse. `pending` or `invalid` is restored only when the canonical value itself is not valid, together with `rawValue`.
+
+Public methods stay `source: 'api'`. The screen facade marks a user gesture with `engine.withSource('user', () => engine.removeFilter(id))`. That wrapper does not add a source argument to the frozen methods. A subscriber that mutates during `state$` or `events$` is queued until the current revision has finished publishing, so revision, `transactionId`, and snapshot stay aligned. Returned snapshots are frozen, including nested values.
+
 ## Resolved config
 
 `getResolvedConfig()` returns the normalized defaults, behavior, ui, definitions, and registry function references. It may contain functions. It is not the persistence snapshot.
