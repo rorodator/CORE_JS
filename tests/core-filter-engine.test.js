@@ -1,0 +1,398 @@
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import path from 'node:path';
+import { test } from 'node:test';
+import { fileURLToPath } from 'node:url';
+import { Core_FilterEngine } from '../lib/filter/core-filter-engine.js';
+import { Core_FilterError } from '../lib/filter/core-filter-error.js';
+
+const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../lib/filter');
+const BIG = '9007199254740993';
+
+/**
+ * @param {Core_FilterEngine} engine
+ */
+function watch(engine) {
+   /** @type {object[]} */
+   const states = [];
+   /** @type {object[]} */
+   const events = [];
+   /** @type {string[]} */
+   const order = [];
+   const stateSub = engine.state$.subscribe((state) => {
+      states.push(state);
+      order.push('state');
+   });
+   const eventSub = engine.events$.subscribe((event) => {
+      events.push(event);
+      order.push('event');
+   });
+   return { states, events, order, stop() { stateSub.unsubscribe(); eventSub.unsubscribe(); } };
+}
+
+function minimal() {
+   return new Core_FilterEngine({
+      definitions: [
+         { id: 'name', type: 'string' },
+         { id: 'amount', type: 'decimal' },
+         { id: 'tradeDate', type: 'date' },
+         { id: 'currency', type: 'select', options: ['EUR', 'USD', 'GBP'] }
+      ]
+   });
+}
+
+test('the engine source does not touch DOM, DataSource, SQL, or AG Grid', () => {
+   const source = fs.readFileSync(path.join(root, 'core-filter-engine.js'), 'utf8')
+      + fs.readFileSync(path.join(root, 'core-filter-error.js'), 'utf8');
+   assert.equal(/\bdocument\b|\bwindow\b|DataSource|ag-grid|agGrid|CORE_UX|core-ajax/.test(source), false);
+});
+
+test('minimal config infers labels, editors, and operators without callbacks', () => {
+   const engine = minimal();
+   const definitions = engine.getDefinitions();
+   assert.equal(definitions.length, 4);
+   assert.equal(definitions[0].label, 'Name');
+   assert.equal(definitions[0].editor, 'text');
+   assert.equal(definitions[0].defaultOperator, 'contains');
+   assert.ok(definitions[0].operators.includes('contains'));
+   assert.equal(definitions[1].label, 'Amount');
+   assert.equal(definitions[1].defaultOperator, 'eq');
+   assert.equal(definitions[2].label, 'Trade date');
+   assert.ok(definitions[2].operators.includes('before'));
+   assert.deepEqual(definitions[3].options, [
+      { value: 'EUR', label: 'EUR' },
+      { value: 'USD', label: 'USD' },
+      { value: 'GBP', label: 'GBP' }
+   ]);
+   assert.equal(engine.getResolvedConfig().defaults.locale, 'en');
+   assert.equal(engine.getResolvedConfig().ui.layout, 'wrap');
+   const state = engine.getState();
+   assert.equal(state.revision, 0);
+   assert.deepEqual(state.filters, []);
+   assert.equal(state.valid, true);
+   assert.equal(engine.getCriteria().criteria.length, 0);
+   assert.equal(engine.getCriteria().combinator, 'AND');
+   engine.destroy();
+});
+
+test('state$ replays the initial state and events$ stays silent', () => {
+   const engine = new Core_FilterEngine({
+      definitions: [{ id: 'amount', type: 'decimal' }],
+      initialFilters: [{ instanceId: 'amount-min', definitionId: 'amount', operator: 'eq', value: '10' }]
+   });
+   const seen = watch(engine);
+   assert.equal(seen.states.length, 1);
+   assert.equal(seen.states[0].revision, 0);
+   assert.equal(seen.states[0].filters[0].value, '10');
+   assert.equal(seen.events.length, 0);
+   assert.equal(engine.state$.source, undefined);
+   assert.equal(engine.events$.source, undefined);
+   assert.equal(Object.isFrozen(engine.state$), true);
+   seen.stop();
+   engine.destroy();
+});
+
+test('canonical numbers stay exact and a JavaScript number is rejected', () => {
+   const engine = new Core_FilterEngine({
+      definitions: [{ id: 'amount', type: 'decimal' }, { id: 'count', type: 'integer' }, { id: 'open', type: 'boolean' }]
+   });
+   const amount = engine.addFilter('amount');
+   const count = engine.addFilter('count');
+   const open = engine.addFilter('open');
+   engine.setValue(amount, '1234567.89');
+   engine.setValue(count, BIG);
+   engine.setValue(open, false);
+   assert.equal(engine.getState().filters.find((item) => item.instanceId === amount).value, '1234567.89');
+   assert.equal(engine.getState().filters.find((item) => item.instanceId === count).value, BIG);
+   assert.equal(engine.getCriteria().criteria.find((item) => item.instanceId === open).value, false);
+   assert.throws(() => engine.setValue(amount, 12), (error) => error instanceof Core_FilterError && error.code === 'E_INVALID_SHAPE');
+   assert.equal(engine.getState().filters.find((item) => item.instanceId === amount).value, '1234567.89');
+   engine.destroy();
+});
+
+test('strict dates, partial ranges, and reversed bounds stay on the instance', () => {
+   const engine = new Core_FilterEngine({
+      definitions: [
+         { id: 'tradeDate', type: 'date' },
+         { id: 'when', type: 'datetime', format: { temporal: 'local' } },
+         { id: 'amount', type: 'decimal' }
+      ]
+   });
+   const date = engine.addFilter('tradeDate', { value: '2026-11-02' });
+   const when = engine.addFilter('when');
+   const amount = engine.addFilter('amount', { operator: 'between', value: { min: '10', max: null } });
+   assert.equal(engine.getState().filters.find((item) => item.instanceId === date).status, 'valid');
+   engine.setValue(date, '2026-02-31');
+   assert.equal(engine.getState().filters.find((item) => item.instanceId === date).status, 'invalid');
+   assert.equal(engine.getState().filters.find((item) => item.instanceId === date).value, null);
+   engine.setValue(when, '2026-11-02T14:35:08Z');
+   assert.equal(engine.getState().filters.find((item) => item.instanceId === when).status, 'invalid');
+   assert.equal(engine.getState().filters.find((item) => item.instanceId === amount).status, 'valid');
+   engine.setValue(amount, { min: '50', max: '10' });
+   const reversed = engine.getState().filters.find((item) => item.instanceId === amount);
+   assert.equal(reversed.status, 'invalid');
+   assert.equal(reversed.errors[0].code, 'E_RANGE_ORDER');
+   engine.setOperator(amount, 'outside');
+   engine.setValue(amount, { min: '1', max: null });
+   assert.equal(engine.getState().filters.find((item) => item.instanceId === amount).errors[0].code, 'E_RANGE_BOUNDS');
+   engine.setValue(amount, { min: '1', max: '5' });
+   assert.equal(engine.getState().filters.find((item) => item.instanceId === amount).status, 'valid');
+   engine.destroy();
+});
+
+test('required, pending, invalid, and isEmpty control criteria as one set', () => {
+   const engine = new Core_FilterEngine({
+      definitions: [
+         { id: 'amount', type: 'decimal', required: true },
+         { id: 'name', type: 'string' }
+      ],
+      initialFilters: [{ instanceId: 'amount-1', definitionId: 'amount' }]
+   });
+   assert.equal(engine.getState().filters[0].status, 'empty');
+   assert.equal(engine.getState().filters[0].errors[0].code, 'E_REQUIRED');
+   assert.equal(engine.getCriteria().criteria, null);
+   engine.setOperator('amount-1', 'isEmpty');
+   assert.equal(engine.getState().filters[0].status, 'valid');
+   assert.equal(engine.getCriteria().criteria[0].operator, 'isEmpty');
+   const before = engine.getState().revision;
+   engine.clearFilter('amount-1');
+   assert.equal(engine.getState().revision, before);
+   engine.setOperator('amount-1', 'eq');
+   const name = engine.addFilter('name', { value: 'Ada' });
+   engine.applyEditorChange('amount-1', { rawValue: '12,', value: null, status: 'pending', touched: true });
+   assert.equal(engine.getState().filters.find((item) => item.instanceId === 'amount-1').rawValue, '12,');
+   assert.equal(engine.getState().filters.find((item) => item.instanceId === name).value, 'Ada');
+   assert.equal(engine.getCriteria().criteria, null);
+   engine.applyEditorChange('amount-1', { rawValue: 'abc', value: null, status: 'invalid', errors: [{ code: 'E_INVALID_SHAPE', message: 'Invalid value.' }], touched: true });
+   assert.equal(engine.getState().filters[0].value, null);
+   assert.equal(engine.getCriteria().valid, false);
+   engine.setValue('amount-1', '0');
+   assert.equal(engine.getCriteria().criteria.map((item) => item.instanceId).includes('amount-1'), true);
+   engine.destroy();
+});
+
+test('mutations are atomic, no-ops are silent, and operator changes are one event', () => {
+   const engine = new Core_FilterEngine({
+      definitions: [{ id: 'amount', type: 'decimal', allowMultipleInstances: true }]
+   });
+   const seen = watch(engine);
+   const id = engine.addFilter('amount', { value: '10' });
+   assert.equal(seen.events.at(-1).type, 'filterAdded');
+   const revision = engine.getState().revision;
+   const eventCount = seen.events.length;
+   engine.setValue(id, '10');
+   engine.setPinned(id, false);
+   engine.moveFilter(id, 0);
+   assert.equal(engine.getState().revision, revision);
+   assert.equal(seen.events.length, eventCount);
+   engine.setOperator(id, 'between');
+   const changed = seen.events.at(-1);
+   assert.equal(changed.type, 'operatorChanged');
+   assert.equal(changed.current.operator, 'between');
+   assert.deepEqual(changed.current.value, { min: null, max: null });
+   assert.equal(seen.events.filter((event) => event.revision === changed.revision && event.type === 'valueChanged').length, 0);
+   assert.deepEqual(seen.order.slice(-2), ['state', 'event']);
+   assert.throws(() => engine.getState().filters.push({}), TypeError);
+   engine.destroy();
+});
+
+test('a failed transaction rolls back and a successful one publishes one snapshot', () => {
+   const engine = new Core_FilterEngine({
+      definitions: [{ id: 'amount', type: 'decimal' }],
+      initialFilters: [{ instanceId: 'amount-min', definitionId: 'amount', operator: 'eq', value: '10' }]
+   });
+   const seen = watch(engine);
+   const before = JSON.stringify(engine.getState());
+   const revision = engine.getState().revision;
+   assert.throws(() => {
+      engine.transaction((tx) => {
+         tx.setOperator('amount-min', 'between');
+         tx.setValue('amount-min', { min: '1000', max: '5000' });
+         assert.equal(tx.getState().filters[0].operator, 'between');
+         assert.equal(engine.getState().filters[0].operator, 'eq');
+         tx.setPinned('missing', true);
+      });
+   }, (error) => error instanceof Core_FilterError && error.code === 'E_UNKNOWN_INSTANCE');
+   assert.equal(JSON.stringify(engine.getState()), before);
+   assert.equal(engine.getState().revision, revision);
+   assert.equal(seen.events.length, 0);
+   assert.equal(seen.states.length, 1);
+
+   engine.transaction((tx) => {
+      tx.setOperator('amount-min', 'between');
+      tx.setValue('amount-min', { min: '1000', max: '5000' });
+      tx.setPinned('amount-min', true);
+   });
+   assert.equal(seen.states.length, 2);
+   const batch = seen.events.filter((event) => event.revision === engine.getState().revision);
+   assert.deepEqual(batch.map((event) => event.type), ['operatorChanged', 'valueChanged', 'pinChanged']);
+   assert.equal(new Set(batch.map((event) => event.transactionId)).size, 1);
+   assert.equal(batch[0].state, seen.states.at(-1));
+   assert.equal(engine.getState().filters[0].pinned, true);
+   assert.deepEqual(engine.getState().filters[0].value, { min: '1000', max: '5000' });
+   assert.equal(seen.order.slice(-4, -3)[0], 'state');
+
+   assert.throws(() => engine.transaction(() => Promise.resolve()), (error) => error.code === 'E_ASYNC_TRANSACTION');
+   assert.equal(engine.getState().revision, batch[0].revision);
+   assert.throws(() => engine.transaction(() => {
+      engine.transaction(() => {});
+   }), (error) => error.code === 'E_NESTED_TRANSACTION');
+   const closed = [];
+   engine.transaction((tx) => closed.push(tx));
+   assert.throws(() => closed[0].setValue('amount-min', '1'), (error) => error.code === 'E_INCOMPATIBLE_UPDATE');
+   engine.destroy();
+});
+
+test('snapshots round-trip runtime definitions and serializable raw values, and a bad import changes nothing', () => {
+   const registry = {
+      providers: { currencies: () => [{ value: 'EUR', label: 'Euro' }] }
+   };
+   const engine = new Core_FilterEngine({
+      definitions: [{ id: 'name', type: 'string', options: () => [] }],
+      extensions: { registry }
+   });
+   assert.throws(() => engine.addDefinition({ id: 'bad', type: 'string', options: () => [] }), (error) => error.code === 'E_UNRESOLVED_REFERENCE');
+   engine.addDefinition({ id: 'currency', type: 'select', providerRef: 'currencies' });
+   const id = engine.addFilter('currency');
+   engine.applyEditorChange(id, { rawValue: 'eu', value: null, status: 'pending', touched: true, selectedLabel: 'Euro' });
+   const snapshot = engine.exportState();
+   assert.equal(JSON.stringify(snapshot).includes('function'), false);
+   assert.equal(snapshot.schemaVersion, 1);
+   assert.equal(snapshot.definitions.length, 1);
+   assert.equal(snapshot.definitions[0].providerRef, 'currencies');
+   assert.equal(snapshot.filters[0].rawValue, 'eu');
+   assert.equal(snapshot.filters[0].status, 'pending');
+   const copy = JSON.parse(JSON.stringify(snapshot));
+   const restored = new Core_FilterEngine({
+      definitions: [{ id: 'name', type: 'string' }],
+      extensions: { registry }
+   });
+   restored.importState(copy);
+   assert.equal(restored.getState().filters[0].rawValue, 'eu');
+   assert.equal(restored.getDefinitions().some((item) => item.id === 'currency'), true);
+   const seen = watch(restored);
+   restored.importState(JSON.parse(JSON.stringify(restored.exportState())));
+   assert.equal(seen.events.length, 0);
+   const intact = JSON.stringify(restored.getState());
+   assert.throws(() => restored.importState({ schemaVersion: 2, definitions: [], filters: [] }), (error) => error.code === 'E_SCHEMA_VERSION');
+   assert.throws(() => restored.importState({
+      schemaVersion: 1,
+      definitions: [{ id: 'missing', type: 'select', providerRef: 'nope' }],
+      filters: []
+   }), (error) => error.code === 'E_UNRESOLVED_REFERENCE');
+   assert.equal(JSON.stringify(restored.getState()), intact);
+   assert.equal(seen.events.length, 0);
+   engine.destroy();
+   restored.destroy();
+});
+
+test('pin locks, group order, duplication limits, and removal stay distinct from clear', () => {
+   const engine = new Core_FilterEngine({
+      behavior: { maxFilters: 20 },
+      definitions: [
+         { id: 'amount', type: 'decimal', allowMultipleInstances: true, maxInstances: 2, group: 'Trading / Dates' },
+         { id: 'name', type: 'string' }
+      ],
+      initialFilters: [
+         { instanceId: 'locked', definitionId: 'name', pinned: true, removable: false, value: 'Ada' }
+      ]
+   });
+   assert.equal(engine.getState().filters[0].pinLocked, true);
+   assert.equal(engine.getState().filters[0].removable, false);
+   assert.deepEqual(engine.getDefinitions()[0].groupPath, ['Trading', 'Dates']);
+   const second = engine.addFilter('amount', { value: '1' });
+   assert.throws(() => engine.moveFilter(second, 0), (error) => error.code === 'E_INCOMPATIBLE_UPDATE');
+   assert.equal(engine.getState().filters[0].instanceId, 'locked');
+   engine.setPinned('locked', false);
+   assert.equal(engine.getState().filters.find((item) => item.instanceId === 'locked').pinLocked, false);
+   engine.removeFilter('locked');
+   assert.equal(engine.getState().filters.some((item) => item.instanceId === 'locked'), false);
+   engine.addFilter('amount', { value: '2' });
+   assert.throws(() => engine.addFilter('amount'), (error) => error.code === 'E_LIMIT_REACHED');
+   const nameEngine = new Core_FilterEngine({ definitions: [{ id: 'name', type: 'string' }] });
+   nameEngine.addFilter('name');
+   assert.throws(() => nameEngine.addFilter('name'), (error) => error.code === 'E_DUPLICATION_FORBIDDEN');
+   const removable = nameEngine.getState().filters[0].instanceId;
+   nameEngine.clearFilter(removable);
+   assert.equal(nameEngine.getState().filters.length, 1);
+   assert.equal(nameEngine.getState().filters[0].value, null);
+   nameEngine.destroy();
+   engine.destroy();
+});
+
+test('twenty filters, reset, cascade, and destroy', () => {
+   const engine = new Core_FilterEngine({
+      definitions: [{ id: 'name', type: 'string', allowMultipleInstances: true }]
+   });
+   const ids = [];
+   for (let index = 0; index < 20; index += 1) {
+      ids.push(engine.addFilter('name', { value: `n${index}` }));
+   }
+   assert.equal(engine.getState().filters.length, 20);
+   assert.equal(engine.getCriteria().criteria.length, 20);
+   engine.addDefinition({ id: 'extra', type: 'integer' });
+   engine.reset();
+   assert.equal(engine.getDefinitions().some((item) => item.id === 'extra'), false);
+   assert.equal(engine.getState().filters.length, 0);
+   engine.addDefinition({ id: 'extra', type: 'integer' });
+   const extra = engine.addFilter('extra', { value: '4' });
+   assert.throws(() => engine.removeDefinition('extra'), (error) => error.code === 'E_INCOMPATIBLE_UPDATE');
+   engine.removeDefinition('extra', { cascade: true });
+   assert.equal(engine.getState().filters.some((item) => item.instanceId === extra), false);
+   const seen = watch(engine);
+   engine.destroy();
+   let completed = 0;
+   engine.state$.subscribe({ complete: () => { completed += 1; } });
+   engine.events$.subscribe({ complete: () => { completed += 1; } });
+   assert.equal(completed, 2);
+   assert.throws(() => engine.addFilter('name'), (error) => error.code === 'E_DESTROYED');
+   assert.doesNotThrow(() => engine.destroy());
+});
+
+test('validate reveals untouched errors and relativeDate stays symbolic', () => {
+   const engine = new Core_FilterEngine({
+      definitions: [
+         { id: 'amount', type: 'decimal', required: true },
+         { id: 'period', type: 'relativeDate' }
+      ],
+      initialFilters: [{ instanceId: 'amount-1', definitionId: 'amount' }]
+   });
+   const seen = watch(engine);
+   const result = engine.validate();
+   assert.equal(result.valid, false);
+   assert.equal(result.errors[0].code, 'E_REQUIRED');
+   assert.equal(engine.getState().filters[0].touched, true);
+   assert.equal(seen.events.at(-1).type, 'validationChanged');
+   const revealed = seen.events.length;
+   engine.validate();
+   assert.equal(seen.events.length, revealed);
+   const period = engine.addFilter('period', { value: { preset: 'last-n-days', amount: 7 } });
+   assert.deepEqual(engine.getState().filters.find((item) => item.instanceId === period).value, { preset: 'last-n-days', amount: 7 });
+   engine.setValue(period, { preset: 'yesterday' });
+   assert.equal(engine.getState().filters.find((item) => item.instanceId === period).status, 'invalid');
+   engine.destroy();
+});
+
+test('repeated edits in one transaction collapse to the net change', () => {
+   const engine = new Core_FilterEngine({
+      definitions: [{ id: 'amount', type: 'decimal' }],
+      initialFilters: [{ instanceId: 'amount-min', definitionId: 'amount', value: '1' }]
+   });
+   const seen = watch(engine);
+   engine.transaction((tx) => {
+      tx.setValue('amount-min', '2');
+      tx.setValue('amount-min', '3');
+   });
+   assert.equal(seen.events.length, 1);
+   assert.equal(seen.events[0].type, 'valueChanged');
+   assert.equal(seen.events[0].current.value, '3');
+   assert.equal(seen.events[0].previous.value, '1');
+   const revision = engine.getState().revision;
+   engine.transaction((tx) => {
+      tx.setValue('amount-min', '9');
+      tx.setValue('amount-min', '3');
+   });
+   assert.equal(engine.getState().revision, revision);
+   assert.equal(seen.events.length, 1);
+   engine.destroy();
+});

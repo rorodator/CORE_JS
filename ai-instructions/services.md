@@ -180,6 +180,10 @@ See [internationalization.md](./internationalization.md) for `data-core-lang` sc
 
 Business outcomes use payload `status` (`SUCCESS`, `LANG_ERROR`, …), not HTTP codes alone.
 
+## Filter engine
+
+`Core_FilterEngine` (`lib/filter/core-filter-engine.js`) is **not** a `$svc` singleton. Each screen constructs `new Core_FilterEngine(config)`. It does not register in `Core.registerAllServices()`. Contract and snapshot shape: [filter-engine.md](./filter-engine.md).
+
 ## Related
 
 - [layering.md](./layering.md), [encapsulation.md](./encapsulation.md)
