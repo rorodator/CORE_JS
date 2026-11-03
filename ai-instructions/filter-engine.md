@@ -17,11 +17,11 @@ It is not a `$svc` service and it is not registered by `Core.registerAllServices
 
 Value parsing reuses `lib/value/`. `setValue` accepts a canonical value only. A localized draft goes through `applyEditorChange`, which keeps `rawValue` and `pending` / `invalid`.
 
-A list operator (`in`, `notIn`, and the other list operators) validates each canonical element. The array is not passed to a scalar parser.
+`multiSelect`, `tags`, and `treeSelect` parse one canonical array with their list parser. `select` and `autocomplete` with `in` or `notIn` parse each element with the scalar parser. The array is not passed to that scalar parser.
 
 `setFilters` and `importState` revalidate values. A supplied `status: 'valid'` cannot hide a value that does not parse. `pending` or `invalid` is restored only when the canonical value itself is not valid, together with `rawValue`.
 
-Public methods stay `source: 'api'`. The screen facade marks a user gesture with `engine.withSource('user', () => engine.removeFilter(id))`. That wrapper does not add a source argument to the frozen methods. A subscriber that mutates during `state$` or `events$` is queued until the current revision has finished publishing, so revision, `transactionId`, and snapshot stay aligned. Returned snapshots are frozen, including nested values.
+Public methods stay `source: 'api'`. The screen facade marks a user gesture with `engine.withSource('user', () => engine.removeFilter(id))`. That wrapper does not add a source argument to the frozen methods. A subscriber that mutates during `state$` or `events$` runs on an isolated draft immediately, so `addFilter` and `transaction` still return their real result. The commit is published only after the current notification: revision, `transactionId`, and snapshot stay aligned, and notifications are not interleaved. A nested or asynchronous transaction fails at once and publishes nothing. Returned snapshots are frozen, including nested values.
 
 ## Resolved config
 

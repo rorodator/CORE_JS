@@ -503,6 +503,49 @@ test('withSource marks CORE_UX commands as user without a new method argument', 
    engine.destroy();
 });
 
+test('list types parse one array and select in parses each item', () => {
+   const definitions = [
+      { id: 'currencies', type: 'multiSelect' },
+      { id: 'labels', type: 'tags' },
+      { id: 'nodes', type: 'treeSelect' },
+      { id: 'currency', type: 'select', options: ['EUR', 'USD', 'GBP'] }
+   ];
+   const engine = new Core_FilterEngine({ definitions });
+   const currencies = engine.addFilter('currencies', { value: ['EUR', 'USD'] });
+   const labels = engine.addFilter('labels', { value: ['blue'] });
+   const nodes = engine.addFilter('nodes', { value: ['root', 'child'] });
+   const currency = engine.addFilter('currency', { operator: 'in', value: ['EUR', 'USD'] });
+   const read = (target, id) => target.getState().filters.find((item) => item.instanceId === id);
+   assert.equal(read(engine, currencies).operator, 'containsAny');
+   assert.equal(read(engine, labels).operator, 'containsAny');
+   assert.equal(read(engine, nodes).operator, 'containsAny');
+   assert.equal(read(engine, currencies).status, 'valid');
+   assert.equal(read(engine, labels).status, 'valid');
+   assert.equal(read(engine, nodes).status, 'valid');
+   assert.deepEqual(read(engine, currencies).value, ['EUR', 'USD']);
+   assert.deepEqual(read(engine, nodes).value, ['root', 'child']);
+   engine.setValue(labels, ['red', 'green']);
+   engine.setValue(currency, ['GBP']);
+   assert.deepEqual(engine.getCriteria().criteria.find((item) => item.instanceId === labels).value, ['red', 'green']);
+   assert.deepEqual(engine.getCriteria().criteria.find((item) => item.instanceId === currency).value, ['GBP']);
+   assert.deepEqual(engine.getCriteria().criteria.find((item) => item.instanceId === nodes).value, ['root', 'child']);
+   const snapshot = JSON.parse(JSON.stringify(engine.exportState()));
+   const restored = new Core_FilterEngine({ definitions });
+   restored.importState(snapshot);
+   assert.equal(read(restored, currencies).status, 'valid');
+   assert.equal(read(restored, currencies).operator, 'containsAny');
+   assert.deepEqual(restored.getCriteria().criteria.find((item) => item.instanceId === currencies).value, ['EUR', 'USD']);
+   assert.deepEqual(restored.getCriteria().criteria.find((item) => item.instanceId === nodes).value, ['root', 'child']);
+   assert.deepEqual(restored.getCriteria().criteria.find((item) => item.instanceId === currency).value, ['GBP']);
+   const revision = engine.getState().revision;
+   assert.throws(() => engine.setValue(currencies, 'EUR'), (error) => error.code === 'E_INVALID_SHAPE');
+   assert.throws(() => engine.setValue(nodes, ['root', 1]), (error) => error.code === 'E_INVALID_SHAPE');
+   assert.equal(engine.getState().revision, revision);
+   assert.deepEqual(read(engine, currencies).value, ['EUR', 'USD']);
+   engine.destroy();
+   restored.destroy();
+});
+
 test('subscriber re-entry stays ordered and nested snapshots are frozen', () => {
    const engine = new Core_FilterEngine({
       definitions: [
@@ -550,6 +593,65 @@ test('subscriber re-entry stays ordered and nested snapshots are frozen', () => 
    assert.throws(() => { criteria.criteria[1].value.push('USD'); }, TypeError);
    assert.deepEqual(engine.getCriteria().criteria.find((item) => item.instanceId === currency).value, ['EUR']);
    assert.throws(() => { engine.getDefinitions()[1].operators.push('nope'); }, TypeError);
+   engine.destroy();
+});
+
+test('reentrant addFilter and transaction return their results without interleaving', () => {
+   const engine = new Core_FilterEngine({
+      definitions: [{ id: 'amount', type: 'decimal', allowMultipleInstances: true }]
+   });
+   const first = engine.addFilter('amount', { value: '1' });
+   /** @type {string[]} */
+   const trace = [];
+   let armed = false;
+   let started = false;
+   let created = '';
+   /** @type {string|undefined} */
+   let returned;
+   engine.state$.subscribe((state) => {
+      trace.push(`state:${state.revision}:${state.filters.map((item) => item.value).join(',')}`);
+      if (!armed || started) {
+         return;
+      }
+      started = true;
+      assert.equal(engine.getState().revision, state.revision);
+      created = engine.addFilter('amount', { value: '4' });
+      assert.notEqual(created, '');
+      assert.equal(engine.getState().filters.some((item) => item.instanceId === created), false);
+      returned = engine.transaction((tx) => {
+         tx.setValue(created, '8');
+         assert.equal(tx.getState().filters.find((item) => item.instanceId === created).value, '8');
+         return 'kept';
+      });
+      assert.equal(returned, 'kept');
+      assert.equal(engine.getState().revision, state.revision);
+      assert.throws(() => engine.addFilter('missing'), (error) => error.code === 'E_UNKNOWN_DEFINITION');
+      assert.throws(() => engine.transaction(() => engine.transaction(() => {})), (error) => error.code === 'E_NESTED_TRANSACTION');
+      assert.throws(() => engine.transaction(() => Promise.resolve('later')), (error) => error.code === 'E_ASYNC_TRANSACTION');
+      assert.equal(engine.getState().revision, state.revision);
+      assert.equal(engine.getState().filters.some((item) => item.instanceId === created), false);
+   });
+   engine.events$.subscribe((event) => {
+      trace.push(`event:${event.revision}:${event.transactionId}:${event.type}`);
+   });
+   armed = true;
+   const before = trace.length;
+   engine.setValue(first, '2');
+   const tail = trace.slice(before);
+   assert.deepEqual(tail.map((item) => item.split(':')[0]), ['state', 'event', 'state', 'event', 'state', 'event']);
+   assert.equal(tail[0].split(':')[1], tail[1].split(':')[1]);
+   assert.equal(tail[2].split(':')[1], tail[3].split(':')[1]);
+   assert.equal(tail[4].split(':')[1], tail[5].split(':')[1]);
+   assert.notEqual(tail[1].split(':')[2], tail[3].split(':')[2]);
+   assert.notEqual(tail[3].split(':')[2], tail[5].split(':')[2]);
+   assert.deepEqual(tail.filter((item) => item.startsWith('event')).map((item) => item.split(':')[3]), [
+      'valueChanged',
+      'filterAdded',
+      'valueChanged'
+   ]);
+   assert.equal(returned, 'kept');
+   assert.equal(engine.getState().filters.find((item) => item.instanceId === first).value, '2');
+   assert.equal(engine.getState().filters.find((item) => item.instanceId === created).value, '8');
    engine.destroy();
 });
 
