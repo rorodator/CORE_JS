@@ -13,6 +13,7 @@ Platform layer — **lowest doll** in the stack. Shared by consuming apps, CORE_
 | [services.md](./services.md) | `$svc()` registry, application IO boundaries, ajax, logging, adding services |
 | [components.md](./components.md) | Core_HTMLElement / Core_HBSElement lifecycle, bindings |
 | [internationalization.md](./internationalization.md) | `data-core-lang`, `$svc('lang').process()` |
+| [filter-engine.md](./filter-engine.md) | `Core_FilterEngine` state, events, snapshot v1 |
 | (this file) | Scope, nesting, ESM, DOM, ajax, router, config |
 
 ## Maintaining rules & skills
