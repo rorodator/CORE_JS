@@ -771,6 +771,7 @@ test('a rejected canonical value is accepted again and raw drafts stay', () => {
    const amount = engine.addFilter('amount', { value: '15' });
    const pending = engine.addFilter('amount', { value: '1' });
    const broken = engine.addFilter('amount', { value: '2' });
+   const typed = engine.addFilter('amount', { value: '8' });
    engine.applyEditorChange(pending, { rawValue: '12,', value: null, status: 'pending', touched: true });
    engine.applyEditorChange(broken, {
       rawValue: 'abc',
@@ -779,8 +780,17 @@ test('a rejected canonical value is accepted again and raw drafts stay', () => {
       errors: [{ code: 'E_INVALID_SHAPE', message: 'Invalid value.' }],
       touched: true
    });
+   engine.applyEditorChange(typed, {
+      rawValue: '15',
+      value: null,
+      status: 'invalid',
+      errors: [{ code: 'E_INVALID_SHAPE', message: 'Keep the draft.' }],
+      touched: true
+   });
    const pendingDraft = read(pending);
    const brokenDraft = read(broken);
+   const typedDraft = read(typed);
+   assert.equal(Object.hasOwn(typedDraft, 'rejectedCanonical'), false);
 
    const origin = engine.getState().revision;
    engine.updateDefinition('amount', { validate: reject });
@@ -796,8 +806,12 @@ test('a rejected canonical value is accepted again and raw drafts stay', () => {
    assert.equal(batch[0].transactionId, batch[1].transactionId);
    assert.equal(batch[0].state, batch[1].state);
    assert.equal(batch[0].state.revision, origin + 1);
+   assert.equal(batch.some((event) => event.instanceId === typed), false);
+   assert.equal(JSON.stringify(engine.exportState()).includes('rejectedCanonical'), false);
+   assert.equal(Object.hasOwn(read(amount), 'rejectedCanonical'), false);
    assert.deepEqual(read(pending), pendingDraft);
    assert.deepEqual(read(broken), brokenDraft);
+   assert.deepEqual(read(typed), typedDraft);
 
    engine.updateDefinition('amount', { validate: allow });
    assert.equal(engine.getState().revision, origin + 2);
@@ -807,6 +821,7 @@ test('a rejected canonical value is accepted again and raw drafts stay', () => {
    assert.deepEqual(read(amount).errors, []);
    assert.deepEqual(read(pending), pendingDraft);
    assert.deepEqual(read(broken), brokenDraft);
+   assert.deepEqual(read(typed), typedDraft);
    batch = seen.events.filter((event) => event.revision === engine.getState().revision);
    assert.deepEqual(batch.map((event) => event.type), ['catalogChanged', 'validationChanged']);
    assert.equal(batch[1].instanceId, amount);
@@ -816,8 +831,17 @@ test('a rejected canonical value is accepted again and raw drafts stay', () => {
 
    const code = engine.addFilter('code', { value: 'ABC' });
    const codePending = engine.addFilter('code', { value: 'Z' });
+   const codeTyped = engine.addFilter('code', { value: 'OK' });
    engine.applyEditorChange(codePending, { rawValue: 'ab', value: null, status: 'pending', touched: true });
+   engine.applyEditorChange(codeTyped, {
+      rawValue: 'ABC',
+      value: null,
+      status: 'invalid',
+      errors: [{ code: 'E_INVALID_SHAPE', message: 'Keep the draft.' }],
+      touched: true
+   });
    const codeDraft = read(codePending);
+   const codeTypedDraft = read(codeTyped);
    const codeOrigin = engine.getState().revision;
    engine.updateDefinition('code', { parse: parseNo });
    assert.equal(engine.getState().revision, codeOrigin + 1);
@@ -829,9 +853,12 @@ test('a rejected canonical value is accepted again and raw drafts stay', () => {
    assert.deepEqual(batch.map((event) => event.type), ['catalogChanged', 'validationChanged']);
    assert.equal(batch[1].instanceId, code);
    assert.equal(batch[0].transactionId, batch[1].transactionId);
+   assert.equal(batch.some((event) => event.instanceId === codeTyped), false);
    assert.deepEqual(read(codePending), codeDraft);
+   assert.deepEqual(read(codeTyped), codeTypedDraft);
    assert.deepEqual(read(pending), pendingDraft);
    assert.deepEqual(read(broken), brokenDraft);
+   assert.deepEqual(read(typed), typedDraft);
 
    engine.updateDefinition('code', { parse: parseOk });
    assert.equal(engine.getState().revision, codeOrigin + 2);
@@ -839,8 +866,10 @@ test('a rejected canonical value is accepted again and raw drafts stay', () => {
    assert.equal(read(code).value, 'ABC');
    assert.equal(read(code).rawValue, undefined);
    assert.deepEqual(read(codePending), codeDraft);
+   assert.deepEqual(read(codeTyped), codeTypedDraft);
    assert.deepEqual(read(pending), pendingDraft);
    assert.deepEqual(read(broken), brokenDraft);
+   assert.deepEqual(read(typed), typedDraft);
    batch = seen.events.filter((event) => event.revision === engine.getState().revision);
    assert.deepEqual(batch.map((event) => event.type), ['catalogChanged', 'validationChanged']);
    assert.equal(batch[0].transactionId, batch[1].transactionId);
