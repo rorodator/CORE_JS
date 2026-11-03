@@ -754,3 +754,118 @@ test('replacing a definition callback is a catalog change and an identical updat
    assert.equal(JSON.parse(JSON.stringify(engine.exportState())).schemaVersion, 1);
    engine.destroy();
 });
+
+test('a rejected canonical value is accepted again and raw drafts stay', () => {
+   const allow = () => null;
+   const reject = () => [{ code: 'E_CUSTOM', message: 'Rejected.' }];
+   const parseOk = (value) => ({ status: 'valid', value, errors: [] });
+   const parseNo = () => ({ status: 'invalid', value: null, errors: [{ code: 'E_CUSTOM', message: 'Unparsed.' }] });
+   const engine = new Core_FilterEngine({
+      definitions: [
+         { id: 'amount', type: 'decimal', allowMultipleInstances: true, validate: allow },
+         { id: 'code', type: 'string', allowMultipleInstances: true, parse: parseOk }
+      ]
+   });
+   const seen = watch(engine);
+   const read = (id) => engine.getState().filters.find((item) => item.instanceId === id);
+   const amount = engine.addFilter('amount', { value: '15' });
+   const pending = engine.addFilter('amount', { value: '1' });
+   const broken = engine.addFilter('amount', { value: '2' });
+   engine.applyEditorChange(pending, { rawValue: '12,', value: null, status: 'pending', touched: true });
+   engine.applyEditorChange(broken, {
+      rawValue: 'abc',
+      value: null,
+      status: 'invalid',
+      errors: [{ code: 'E_INVALID_SHAPE', message: 'Invalid value.' }],
+      touched: true
+   });
+   const pendingDraft = read(pending);
+   const brokenDraft = read(broken);
+
+   const origin = engine.getState().revision;
+   engine.updateDefinition('amount', { validate: reject });
+   assert.equal(engine.getState().revision, origin + 1);
+   assert.equal(read(amount).status, 'invalid');
+   assert.equal(read(amount).value, null);
+   assert.equal(read(amount).rawValue, '15');
+   assert.equal(read(amount).errors[0].code, 'E_CUSTOM');
+   assert.equal(engine.getCriteria().criteria, null);
+   let batch = seen.events.filter((event) => event.revision === engine.getState().revision);
+   assert.deepEqual(batch.map((event) => event.type), ['catalogChanged', 'validationChanged']);
+   assert.equal(batch[1].instanceId, amount);
+   assert.equal(batch[0].transactionId, batch[1].transactionId);
+   assert.equal(batch[0].state, batch[1].state);
+   assert.equal(batch[0].state.revision, origin + 1);
+   assert.deepEqual(read(pending), pendingDraft);
+   assert.deepEqual(read(broken), brokenDraft);
+
+   engine.updateDefinition('amount', { validate: allow });
+   assert.equal(engine.getState().revision, origin + 2);
+   assert.equal(read(amount).status, 'valid');
+   assert.equal(read(amount).value, '15');
+   assert.equal(read(amount).rawValue, undefined);
+   assert.deepEqual(read(amount).errors, []);
+   assert.deepEqual(read(pending), pendingDraft);
+   assert.deepEqual(read(broken), brokenDraft);
+   batch = seen.events.filter((event) => event.revision === engine.getState().revision);
+   assert.deepEqual(batch.map((event) => event.type), ['catalogChanged', 'validationChanged']);
+   assert.equal(batch[1].instanceId, amount);
+   assert.equal(batch[0].transactionId, batch[1].transactionId);
+   assert.notEqual(batch[0].transactionId, seen.events.find((event) => event.revision === origin + 1).transactionId);
+   assert.equal(engine.getCriteria().criteria, null);
+
+   const code = engine.addFilter('code', { value: 'ABC' });
+   const codePending = engine.addFilter('code', { value: 'Z' });
+   engine.applyEditorChange(codePending, { rawValue: 'ab', value: null, status: 'pending', touched: true });
+   const codeDraft = read(codePending);
+   const codeOrigin = engine.getState().revision;
+   engine.updateDefinition('code', { parse: parseNo });
+   assert.equal(engine.getState().revision, codeOrigin + 1);
+   assert.equal(read(code).status, 'invalid');
+   assert.equal(read(code).value, null);
+   assert.equal(read(code).rawValue, 'ABC');
+   assert.equal(engine.getCriteria().criteria, null);
+   batch = seen.events.filter((event) => event.revision === engine.getState().revision);
+   assert.deepEqual(batch.map((event) => event.type), ['catalogChanged', 'validationChanged']);
+   assert.equal(batch[1].instanceId, code);
+   assert.equal(batch[0].transactionId, batch[1].transactionId);
+   assert.deepEqual(read(codePending), codeDraft);
+   assert.deepEqual(read(pending), pendingDraft);
+   assert.deepEqual(read(broken), brokenDraft);
+
+   engine.updateDefinition('code', { parse: parseOk });
+   assert.equal(engine.getState().revision, codeOrigin + 2);
+   assert.equal(read(code).status, 'valid');
+   assert.equal(read(code).value, 'ABC');
+   assert.equal(read(code).rawValue, undefined);
+   assert.deepEqual(read(codePending), codeDraft);
+   assert.deepEqual(read(pending), pendingDraft);
+   assert.deepEqual(read(broken), brokenDraft);
+   batch = seen.events.filter((event) => event.revision === engine.getState().revision);
+   assert.deepEqual(batch.map((event) => event.type), ['catalogChanged', 'validationChanged']);
+   assert.equal(batch[0].transactionId, batch[1].transactionId);
+   assert.equal(batch[0].revision, codeOrigin + 2);
+   engine.destroy();
+
+   const clean = new Core_FilterEngine({
+      definitions: [{ id: 'amount', type: 'decimal', validate: allow }]
+   });
+   const watched = watch(clean);
+   const id = clean.addFilter('amount', { value: '15' });
+   const start = clean.getState().revision;
+   clean.updateDefinition('amount', { validate: reject });
+   assert.equal(clean.getCriteria().criteria, null);
+   clean.updateDefinition('amount', { validate: allow });
+   assert.equal(clean.getState().revision, start + 2);
+   assert.equal(clean.getState().filters[0].status, 'valid');
+   assert.deepEqual(clean.getCriteria().criteria, [{
+      instanceId: id,
+      definitionId: 'amount',
+      operator: 'eq',
+      value: '15'
+   }]);
+   const restored = watched.events.filter((event) => event.revision === clean.getState().revision);
+   assert.deepEqual(restored.map((event) => event.type), ['catalogChanged', 'validationChanged']);
+   assert.equal(restored[0].state.filters[0].value, '15');
+   clean.destroy();
+});
